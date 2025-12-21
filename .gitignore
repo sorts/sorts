@@ -4,3 +4,5 @@ node_modules
 .vscode
 dist
 *.log
+id_ed25519_github
+id_ed25519_github.pub
