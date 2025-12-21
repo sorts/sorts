@@ -50,6 +50,12 @@ a:hover {
     padding: 1rem 0;
 }
 
+.header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .nav {
     display: flex;
     justify-content: center;
@@ -248,19 +254,27 @@ a:hover {
 }
 
 .social-links {
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     display: flex;
     justify-content: center;
     gap: 1.5rem;
 }
 
 .social-links a {
-    color: white;
+    color: var(--primary-color);
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .social-links a:hover {
     color: var(--accent-color);
+}
+
+.social-icon {
+    width: 20px;
+    height: 20px;
 }
 
 /* Responsive */
