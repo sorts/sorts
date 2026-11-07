@@ -473,11 +473,12 @@
 
         const filtered = entries.filter(pub => {
             const slug = getThumbSlug(pub.key);
+            const pubCats = pub.categories && pub.categories.length > 0 ? pub.categories : [pub.category].filter(Boolean);
             if (adminStatusFilter === 'selected' && !pub.isSelected) return false;
             if (adminStatusFilter === 'unselected' && pub.isSelected) return false;
-            if (adminStatusFilter === 'explicit_cat' && !pub.explicitCategory) return false;
+            if (adminStatusFilter === 'explicit_cat' && (!pub.explicitCategories || pub.explicitCategories.length === 0) && !pub.explicitCategory) return false;
             if (adminStatusFilter === 'modified_thumb' && !pendingThumbnails.has(slug)) return false;
-            if (adminCatFilter !== 'All' && (!pub.category || pub.category.id !== adminCatFilter)) return false;
+            if (adminCatFilter !== 'All' && !pubCats.some(c => c.id === adminCatFilter)) return false;
 
             if (q) {
                 const hay = `${pub.title} ${pub.author} ${pub.venue} ${pub.year} ${pub.key}`.toLowerCase();
@@ -501,7 +502,8 @@
             const row = document.createElement('div');
             row.className = `admin-pub-row ${pub.isSelected ? 'is-selected' : ''}`;
 
-            const autoCat = window.PublicationsApp.getCategoryInfo(pub.title, pub.venue, '');
+            const isAutoCat = !pub.explicitCategories || pub.explicitCategories.length === 0;
+            const activeCatIds = new Set((pub.categories || [pub.category]).filter(Boolean).map(c => c.id));
             const thumbSrc = pendingThumbnails.has(slug)
                 ? pendingThumbnails.get(slug).dataUrl
                 : `publications/thumbs/${slug}.jpg`;
@@ -523,6 +525,24 @@
                         <code>${escapeHtml(pub.key)}</code>
                         ${pub.venue ? ` &bull; <span>${escapeHtml(pub.venue)}</span>` : ''}
                     </div>
+                    <div class="admin-multi-cat-group" role="group" aria-label="Categories for this publication">
+                        <button type="button" class="admin-cat-chip admin-cat-chip-auto ${isAutoCat ? 'active' : ''}"
+                            title="Auto-detect categories from title and venue">
+                            Auto
+                        </button>
+                        ${categories.map(c => {
+                            const isActive = activeCatIds.has(c.id);
+                            const isPinned = !isAutoCat && isActive;
+                            return `
+                                <button type="button"
+                                    class="admin-cat-chip ${isActive ? 'active' : ''} ${isPinned ? 'pinned' : ''}"
+                                    data-cat-id="${escapeHtml(c.id)}"
+                                    title="Toggle category: ${escapeHtml(c.label)}">
+                                    ${isPinned ? '📌 ' : ''}${escapeHtml(c.label)}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
                 </div>
 
                 <div class="admin-row-controls">
@@ -530,19 +550,6 @@
                         title="${pub.isSelected ? 'Selected publication (click to unselect)' : 'Click to mark as Selected publication'}">
                         ${pub.isSelected ? '★ Selected' : '☆ Select'}
                     </button>
-
-                    <div class="admin-cat-select-wrap">
-                        <select class="admin-select admin-row-cat-select" title="Assign topic category">
-                            <option value="" ${!pub.explicitCategory ? 'selected' : ''}>
-                                Auto (${escapeHtml(autoCat ? autoCat.label : 'CV')})
-                            </option>
-                            ${categories.map(c => `
-                                <option value="${escapeHtml(c.id)}" ${pub.explicitCategory === c.id ? 'selected' : ''}>
-                                    📌 ${escapeHtml(c.label)}
-                                </option>
-                            `).join('')}
-                        </select>
-                    </div>
 
                     <div class="admin-row-btn-group">
                         <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary admin-row-thumb-btn" title="Update thumbnail image">
@@ -572,13 +579,38 @@
                 markBibModified();
             };
 
-            // Change Category
-            const catSelect = row.querySelector('.admin-row-cat-select');
-            catSelect.onchange = (e) => {
-                pub.explicitCategory = e.target.value;
-                pub.category = window.PublicationsApp.getCategoryInfo(pub.title, pub.venue, pub.explicitCategory);
+            // Multi-Category Chip Toggles
+            const autoChip = row.querySelector('.admin-cat-chip-auto');
+            autoChip.onclick = () => {
+                pub.explicitCategories = [];
+                pub.explicitCategory = '';
+                pub.categories = window.PublicationsApp.getCategoriesInfo(pub.title, pub.venue, []);
+                pub.category = pub.categories[0];
                 markBibModified();
+                renderAdminTableRows();
             };
+
+            row.querySelectorAll('.admin-cat-chip[data-cat-id]').forEach(chip => {
+                chip.onclick = () => {
+                    const clickedId = chip.getAttribute('data-cat-id');
+                    let currentIds = Array.isArray(pub.explicitCategories) && pub.explicitCategories.length > 0
+                        ? [...pub.explicitCategories]
+                        : Array.from(activeCatIds);
+
+                    if (currentIds.includes(clickedId)) {
+                        currentIds = currentIds.filter(id => id !== clickedId);
+                    } else {
+                        currentIds.push(clickedId);
+                    }
+
+                    pub.explicitCategories = currentIds;
+                    pub.explicitCategory = currentIds.join(', ');
+                    pub.categories = window.PublicationsApp.getCategoriesInfo(pub.title, pub.venue, currentIds);
+                    pub.category = pub.categories[0];
+                    markBibModified();
+                    renderAdminTableRows();
+                };
+            });
 
             // Open Thumbnail Studio
             row.querySelector('.admin-row-thumb-wrap').onclick = () => openThumbnailStudioModal(pub);
@@ -696,6 +728,7 @@
             url: cand.url || (cand.doi ? `https://doi.org/${cand.doi}` : ''),
             eprint: cand.eprint || '',
             venue: cand.venue || 'Preprint',
+            explicitCategories: [],
             explicitCategory: '',
             isSelected: false,
             _fieldsEdited: true
@@ -705,7 +738,8 @@
         } else {
             entry.journal = cand.venue || 'CoRR';
         }
-        entry.category = window.PublicationsApp.getCategoryInfo(entry.title, entry.venue, '');
+        entry.categories = window.PublicationsApp.getCategoriesInfo(entry.title, entry.venue, []);
+        entry.category = entry.categories[0];
         entry.rawBlock = window.PublicationsApp.buildEntryBlock(entry);
         return entry;
     }
@@ -860,6 +894,7 @@
         candidates.forEach(cand => {
             const card = document.createElement('div');
             card.className = 'admin-candidate-card';
+            const candCatIds = new Set((cand.categories || [cand.category]).filter(Boolean).map(c => c.id));
             card.innerHTML = `
                 <div class="admin-candidate-info">
                     <div>
@@ -868,29 +903,47 @@
                     </div>
                     <div class="admin-row-authors">${escapeHtml(cand.author)}</div>
                     <div class="admin-row-venue">${escapeHtml(cand.venue)} ${cand.doi ? `&bull; DOI: ${escapeHtml(cand.doi)}` : ''}</div>
+                    <div class="admin-multi-cat-group" style="margin-top:0.35rem;">
+                        ${categories.map(c => `
+                            <button type="button" class="admin-cat-chip ${candCatIds.has(c.id) ? 'active' : ''}" data-cat-id="${escapeHtml(c.id)}">
+                                ${escapeHtml(c.label)}
+                            </button>
+                        `).join('')}
+                    </div>
                 </div>
                 <div class="admin-candidate-actions">
                     <label class="admin-checkbox-label">
                         <input type="checkbox" class="cand-selected-chk"> ★ Selected
                     </label>
-                    <select class="admin-select cand-cat-select">
-                        ${categories.map(c => `<option value="${escapeHtml(c.id)}" ${cand.category && cand.category.id === c.id ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-                    </select>
                     <button type="button" class="admin-btn admin-btn-sm admin-btn-primary cand-import-btn">
                         + Add to publications.bib
                     </button>
                 </div>
             `;
 
+            card.querySelectorAll('.admin-cat-chip[data-cat-id]').forEach(chip => {
+                chip.onclick = () => {
+                    const id = chip.getAttribute('data-cat-id');
+                    if (candCatIds.has(id)) {
+                        candCatIds.delete(id);
+                        chip.classList.remove('active');
+                    } else {
+                        candCatIds.add(id);
+                        chip.classList.add('active');
+                    }
+                };
+            });
+
             const chk = card.querySelector('.cand-selected-chk');
-            const catSel = card.querySelector('.cand-cat-select');
             const importBtn = card.querySelector('.cand-import-btn');
 
             importBtn.onclick = () => {
                 cand.isSelected = chk.checked;
                 cand.selected = cand.isSelected ? 'true' : '';
-                cand.explicitCategory = catSel.value;
-                cand.category = window.PublicationsApp.getCategoryInfo(cand.title, cand.venue, cand.explicitCategory);
+                cand.explicitCategories = Array.from(candCatIds);
+                cand.explicitCategory = cand.explicitCategories.join(', ');
+                cand.categories = window.PublicationsApp.getCategoriesInfo(cand.title, cand.venue, cand.explicitCategories);
+                cand.category = cand.categories[0];
                 cand.rawBlock = window.PublicationsApp.buildEntryBlock(cand);
 
                 const entries = window.PublicationsApp.getEntries();
@@ -925,11 +978,17 @@
             doi: '',
             url: '',
             eprint: '',
+            explicitCategories: [],
             explicitCategory: '',
             isSelected: false
         };
 
         const categories = window.PublicationsApp.getCategories().filter(c => c.id !== 'All');
+        const initialExplicitIds = Array.isArray(pub.explicitCategories)
+            ? [...pub.explicitCategories]
+            : window.PublicationsApp.parseExplicitCategoryIds(pub.explicitCategory || '');
+        const selectedCatSet = new Set(initialExplicitIds);
+
         const currentBibBlock = existingPub
             ? window.PublicationsApp.buildEntryBlock(existingPub)
             : window.PublicationsApp.buildEntryBlock(pub);
@@ -974,17 +1033,10 @@
                         <input type="text" id="edit-pub-author" class="admin-input" value="${escapeHtml(pub.author)}">
                     </div>
 
-                    <div class="admin-form-row-3">
+                    <div class="admin-form-row-2">
                         <div class="admin-form-group">
                             <label>Year</label>
                             <input type="text" id="edit-pub-year" class="admin-input" value="${escapeHtml(pub.year || '')}">
-                        </div>
-                        <div class="admin-form-group">
-                            <label>Category</label>
-                            <select id="edit-pub-category" class="admin-select">
-                                <option value="" ${!pub.explicitCategory ? 'selected' : ''}>Auto-detect from title/venue</option>
-                                ${categories.map(c => `<option value="${escapeHtml(c.id)}" ${pub.explicitCategory === c.id ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}
-                            </select>
                         </div>
                         <div class="admin-form-group">
                             <label>Selected Highlight</label>
@@ -992,6 +1044,20 @@
                                 <input type="checkbox" id="edit-pub-selected" ${pub.isSelected ? 'checked' : ''}>
                                 Mark as Selected (★)
                             </label>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label>Categories (select one or multiple, or leave on Auto-detect)</label>
+                        <div class="admin-multi-cat-group" id="edit-pub-cat-chips">
+                            <button type="button" class="admin-cat-chip admin-cat-chip-auto ${selectedCatSet.size === 0 ? 'active' : ''}" id="edit-pub-cat-auto">
+                                Auto-detect
+                            </button>
+                            ${categories.map(c => `
+                                <button type="button" class="admin-cat-chip ${selectedCatSet.has(c.id) ? 'active pinned' : ''}" data-cat-id="${escapeHtml(c.id)}">
+                                    ${escapeHtml(c.label)}
+                                </button>
+                            `).join('')}
                         </div>
                     </div>
 
@@ -1042,6 +1108,36 @@
         modal.querySelector('#edit-modal-close').onclick = close;
         modal.querySelector('#edit-cancel-btn').onclick = close;
 
+        const autoChipModal = modal.querySelector('#edit-pub-cat-auto');
+        const catChipsModal = modal.querySelectorAll('#edit-pub-cat-chips .admin-cat-chip[data-cat-id]');
+
+        const syncModalChips = () => {
+            autoChipModal.classList.toggle('active', selectedCatSet.size === 0);
+            catChipsModal.forEach(chip => {
+                const id = chip.getAttribute('data-cat-id');
+                const on = selectedCatSet.has(id);
+                chip.classList.toggle('active', on);
+                chip.classList.toggle('pinned', on);
+            });
+        };
+
+        autoChipModal.onclick = () => {
+            selectedCatSet.clear();
+            syncModalChips();
+        };
+
+        catChipsModal.forEach(chip => {
+            chip.onclick = () => {
+                const id = chip.getAttribute('data-cat-id');
+                if (selectedCatSet.has(id)) {
+                    selectedCatSet.delete(id);
+                } else {
+                    selectedCatSet.add(id);
+                }
+                syncModalChips();
+            };
+        });
+
         modal.querySelector('#edit-parse-raw-btn').onclick = () => {
             const rawText = modal.querySelector('#edit-pub-raw-bib').value;
             const parsed = window.PublicationsApp.parseBibtex(rawText);
@@ -1057,6 +1153,11 @@
                 modal.querySelector('#edit-pub-doi').value = p.doi || '';
                 modal.querySelector('#edit-pub-url').value = p.url || '';
                 modal.querySelector('#edit-pub-eprint').value = p.eprint || '';
+                if (Array.isArray(p.explicitCategories) && p.explicitCategories.length > 0) {
+                    selectedCatSet.clear();
+                    p.explicitCategories.forEach(id => selectedCatSet.add(id));
+                    syncModalChips();
+                }
                 showToast('Parsed BibTeX fields', 'info');
             } else {
                 showToast('Could not parse raw BibTeX block. Ensure it has @type{key, ...}', 'error');
@@ -1088,7 +1189,8 @@
             pub.title = title;
             pub.author = author;
             pub.year = modal.querySelector('#edit-pub-year').value.trim();
-            pub.explicitCategory = modal.querySelector('#edit-pub-category').value;
+            pub.explicitCategories = Array.from(selectedCatSet);
+            pub.explicitCategory = pub.explicitCategories.join(', ');
             pub.isSelected = modal.querySelector('#edit-pub-selected').checked;
             pub.selected = pub.isSelected ? 'true' : '';
             pub.journal = modal.querySelector('#edit-pub-journal').value.trim();

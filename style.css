@@ -1065,10 +1065,47 @@ a:hover {
     color: #D97706;
 }
 
-.admin-row-cat-select {
-    width: 175px;
-    font-size: 0.78rem;
-    padding: 0.35rem 0.55rem;
+.admin-multi-cat-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+    margin-top: 0.42rem;
+}
+
+.admin-cat-chip {
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    color: var(--muted-color);
+    padding: 0.16rem 0.52rem;
+    border-radius: 1rem;
+    font-family: var(--font-family);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.admin-cat-chip:hover {
+    border-color: var(--accent-color);
+    color: var(--primary-color);
+}
+
+.admin-cat-chip.active {
+    background: rgba(14, 165, 233, 0.14);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.admin-cat-chip.pinned {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #FFFFFF;
+}
+
+.admin-cat-chip-auto.active {
+    background: var(--badge-bg);
+    border-color: var(--muted-color);
+    color: var(--primary-color);
 }
 
 .admin-row-btn-group {

@@ -46,29 +46,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getCategoryById(catId) {
         if (!catId) return null;
-        const norm = catId.trim().toLowerCase();
+        const norm = String(catId).trim().toLowerCase();
         return CATEGORIES.find(c => c.id.toLowerCase() === norm && c.id !== 'All') || null;
     }
 
-    function getCategoryInfo(title, venue = '', explicitCatId = '') {
-        if (explicitCatId) {
-            const explicitMatch = getCategoryById(explicitCatId);
-            if (explicitMatch) return explicitMatch;
+    function parseExplicitCategoryIds(rawVal) {
+        if (!rawVal) return [];
+        const parts = Array.isArray(rawVal)
+            ? rawVal
+            : String(rawVal).split(/[,;|]+/);
+        const seen = new Set();
+        const result = [];
+        for (const p of parts) {
+            const cat = getCategoryById(p);
+            if (cat && !seen.has(cat.id)) {
+                seen.add(cat.id);
+                result.push(cat.id);
+            }
         }
+        return result;
+    }
+
+    function getCategoriesInfo(title, venue = '', explicitCats = '') {
+        const explicitIds = parseExplicitCategoryIds(explicitCats);
+        if (explicitIds.length > 0) {
+            return explicitIds.map(id => getCategoryById(id)).filter(Boolean);
+        }
+
         const text = `${title} ${venue}`;
+        const matched = [];
+        const addIfFound = (id) => {
+            const cat = getCategoryById(id);
+            if (cat && !matched.some(m => m.id === cat.id)) {
+                matched.push(cat);
+            }
+        };
+
         if (/\b(generative|gan|gantlitz|nerf|radiance|relight|relighting|lighting|portrait|face|facial|avatar|avatars|magicmirror|diffusion|synthesis|human|humans)\b/i.test(text)) {
-            return getCategoryById('genai') || CATEGORIES[1] || CATEGORIES[CATEGORIES.length - 1];
+            addIfFound('genai');
         }
         if (/\b(depth|stereo|rgb-d|rgbd|tof|time-of-flight|disparity|dual-camera|dual-cameras|du2net|du²net)\b/i.test(text)) {
-            return getCategoryById('depth') || CATEGORIES[3] || CATEGORIES[CATEGORIES.length - 1];
+            addIfFound('depth');
         }
         if (/\b(holoportation|virtual reality|augmented reality|mixed reality|telepresence|vr|ar|xr|headset|tracking|pose|gesture|hand|hands|interactive)\b/i.test(text)) {
-            return getCategoryById('arvr') || CATEGORIES[4] || CATEGORIES[CATEGORIES.length - 1];
+            addIfFound('arvr');
         }
         if (/\b(3d|volumetric|point cloud|point clouds|mesh|meshes|reconstruction|octree|geometry|surface|fusion4d|room assembly)\b/i.test(text)) {
-            return getCategoryById('3d') || CATEGORIES[2] || CATEGORIES[CATEGORIES.length - 1];
+            addIfFound('3d');
         }
-        return getCategoryById('cv') || CATEGORIES[5] || CATEGORIES[CATEGORIES.length - 1];
+
+        if (matched.length === 0) {
+            const fallback = getCategoryById('cv') || CATEGORIES[5] || CATEGORIES[CATEGORIES.length - 1];
+            if (fallback) matched.push(fallback);
+        }
+        return matched;
+    }
+
+    function getCategoryInfo(title, venue = '', explicitCats = '') {
+        const cats = getCategoriesInfo(title, venue, explicitCats);
+        return cats[0] || CATEGORIES[CATEGORIES.length - 1];
     }
 
     function decodeLatexEscapes(str) {
@@ -209,10 +245,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (entry.title && entry.author) {
-                const explicitCat = (entry.category || '').trim();
-                entry.explicitCategory = explicitCat;
+                const explicitIds = parseExplicitCategoryIds(entry.category || '');
+                entry.explicitCategories = explicitIds;
+                entry.explicitCategory = explicitIds.join(', ');
                 entry.venue = formatVenue(entry);
-                entry.category = getCategoryInfo(entry.title, entry.venue, explicitCat);
+                entry.categories = getCategoriesInfo(entry.title, entry.venue, explicitIds);
+                entry.category = entry.categories[0];
                 entry.isSelected = /^(true|yes|1)$/i.test((entry.selected || '').trim());
                 entries.push(entry);
             }
@@ -249,10 +287,13 @@ document.addEventListener('DOMContentLoaded', () => {
             block = `@${type}{${entry.key},\n${lines.join(',\n')}\n}`;
         }
 
-        // Inject explicit category and selected flags before closing brace
+        // Inject explicit category (single or comma-separated multiple) and selected flags before closing brace
         const extraLines = [];
-        if (entry.explicitCategory) {
-            extraLines.push(`  category     = {${entry.explicitCategory}}`);
+        const explicitIds = Array.isArray(entry.explicitCategories)
+            ? entry.explicitCategories.filter(Boolean)
+            : parseExplicitCategoryIds(entry.explicitCategory || '');
+        if (explicitIds.length > 0) {
+            extraLines.push(`  category     = {${explicitIds.join(', ')}}`);
         }
         if (entry.isSelected) {
             extraLines.push(`  selected     = {true}`);
@@ -343,7 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filtered = modePool.filter(pub => {
             const matchesYear = currentYearFilter === 'All' || pub.year === currentYearFilter;
-            const matchesCategory = currentCategoryFilter === 'All' || pub.category.id === currentCategoryFilter;
+            const pubCats = pub.categories && pub.categories.length > 0 ? pub.categories : [pub.category].filter(Boolean);
+            const matchesCategory = currentCategoryFilter === 'All' || pubCats.some(c => c.id === currentCategoryFilter);
             const matchesSearch = !query ||
                 pub.title.toLowerCase().includes(query) ||
                 (pub.author && pub.author.toLowerCase().includes(query)) ||
@@ -414,10 +456,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 metaDiv.appendChild(yearBadge);
             }
 
-            const catBadge = document.createElement('span');
-            catBadge.className = 'pub-cat-badge';
-            catBadge.textContent = pub.category.label;
-            metaDiv.appendChild(catBadge);
+            const pubCats = pub.categories && pub.categories.length > 0 ? pub.categories : [pub.category].filter(Boolean);
+            pubCats.forEach(cat => {
+                const catBadge = document.createElement('span');
+                catBadge.className = 'pub-cat-badge';
+                catBadge.textContent = cat.label;
+                metaDiv.appendChild(catBadge);
+            });
 
             if (pub.venue) {
                 const conf = document.createElement('span');
@@ -529,7 +574,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function refreshAll() {
         publicationsData.forEach(pub => {
             pub.venue = formatVenue(pub);
-            pub.category = getCategoryInfo(pub.title, pub.venue, pub.explicitCategory || '');
+            const explicitIds = Array.isArray(pub.explicitCategories)
+                ? parseExplicitCategoryIds(pub.explicitCategories)
+                : parseExplicitCategoryIds(pub.explicitCategory || '');
+            pub.explicitCategories = explicitIds;
+            pub.explicitCategory = explicitIds.join(', ');
+            pub.categories = getCategoriesInfo(pub.title, pub.venue, explicitIds);
+            pub.category = pub.categories[0];
             pub.rawBibtex = cleanBibtexForCopy(buildEntryBlock(pub));
         });
         renderViewModeFilters();
@@ -555,6 +606,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         getDefaultCategories: () => DEFAULT_CATEGORIES.map(c => ({ ...c })),
         getCategoryInfo: (title, venue, explicitCatId) => getCategoryInfo(title, venue, explicitCatId),
+        getCategoriesInfo: (title, venue, explicitCats) => getCategoriesInfo(title, venue, explicitCats),
+        parseExplicitCategoryIds: (rawVal) => parseExplicitCategoryIds(rawVal),
         parseBibtex: (bib) => parseBibtex(bib),
         serializeBibtex: (entries, cats) => serializeBibtex(entries || publicationsData, cats || CATEGORIES),
         buildEntryBlock: (entry) => buildEntryBlock(entry),
