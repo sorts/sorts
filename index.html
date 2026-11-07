@@ -4,23 +4,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sergio Orts Escolano - Senior Research Scientist</title>
+    <title>Sergio Orts Escolano - Senior Staff Research Scientist</title>
+    <meta name="description"
+        content="Sergio Orts Escolano is a Senior Staff Research Scientist at Google specializing in Computer Vision, Machine Learning, Neural Rendering, 3D Reconstruction, and AR/VR.">
+    <meta name="author" content="Sergio Orts Escolano">
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Sergio Orts Escolano - Senior Staff Research Scientist">
+    <meta property="og:description"
+        content="Pushing the boundaries of Computer Vision, Machine Learning, Generative AI, and AR/VR at Google.">
+    <meta property="og:image" content="profile.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Sergio Orts Escolano - Senior Staff Research Scientist">
+    <meta name="twitter:description"
+        content="Pushing the boundaries of Computer Vision, Machine Learning, Generative AI, and AR/VR at Google.">
+    <meta name="twitter:image" content="profile.png">
+
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F172A'/><text x='50%25' y='54%25' dominant-baseline='central' text-anchor='middle' fill='%2338BDF8' font-family='sans-serif' font-weight='700' font-size='48'>SO</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 </head>
 
 <body>
     <header class="header">
         <div class="container">
-            <nav class="nav">
+            <nav class="nav" aria-label="Primary Navigation">
                 <a href="#bio" class="nav-link">Bio</a>
-                <a href="#research" class="nav-link">Research</a>
-                <a href="#projects" class="nav-link">Projects</a>
                 <a href="#publications" class="nav-link">Publications</a>
+                <a href="#research" class="nav-link">Research</a>
             </nav>
             <div class="social-links">
                 <a href="https://scholar.google.com/citations?hl=en&user=dznX1DMAAAAJ" target="_blank"
-                    aria-label="Google Scholar">
+                    rel="noopener noreferrer" aria-label="Google Scholar">
                     <svg role="img" viewBox="0 0 24 24" fill="currentColor" class="social-icon"
                         xmlns="http://www.w3.org/2000/svg">
                         <title>Google Scholar</title>
@@ -29,7 +56,8 @@
                     </svg>
                     <span>Google Scholar</span>
                 </a>
-                <a href="https://www.linkedin.com/in/sergioortsescolano" target="_blank" aria-label="LinkedIn">
+                <a href="https://www.linkedin.com/in/sergioortsescolano" target="_blank" rel="noopener noreferrer"
+                    aria-label="LinkedIn">
                     <svg role="img" viewBox="0 0 16 16" fill="currentColor" class="social-icon"
                         xmlns="http://www.w3.org/2000/svg">
                         <title>LinkedIn</title>
@@ -38,7 +66,8 @@
                     </svg>
                     <span>LinkedIn</span>
                 </a>
-                <a href="https://dblp.org/pid/92/9685.html" target="_blank" aria-label="DBLP">
+                <a href="https://dblp.org/pid/92/9685.html" target="_blank" rel="noopener noreferrer"
+                    aria-label="DBLP">
                     <svg role="img" viewBox="0 0 24 24" fill="currentColor" class="social-icon"
                         xmlns="http://www.w3.org/2000/svg">
                         <title>DBLP</title>
@@ -47,6 +76,27 @@
                     </svg>
                     <span>DBLP</span>
                 </a>
+                <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode"
+                    title="Toggle dark/light mode">
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
@@ -54,7 +104,7 @@
     <main>
         <section id="hero" class="hero text-center">
             <div class="container">
-                <img src="profile.png" alt="Sergio Orts Escolano" class="profile-pic">
+                <img src="profile.png" alt="Sergio Orts Escolano" class="profile-pic" width="150" height="150">
                 <h1 class="name">Sergio Orts Escolano</h1>
                 <p class="title">Senior Staff Research Scientist at Google</p>
                 <p class="tagline">Pushing the boundaries of Computer Vision, Machine Learning, and AR/VR.</p>
@@ -66,108 +116,90 @@
                 <h2 class="section-title">About Me</h2>
                 <div class="bio-content">
                     <p>
-                        I am a Senior Research Scientist at Google, where I work on cutting-edge problems in Computer
-                        Vision and Machine Learning.
-                        Previously, I was a Researcher at Microsoft Research, contributing to the Holoportation project.
-                        My academic journey includes a PhD from the University of Alicante, specializing in real-time 3D
-                        reconstruction and depth sensing.
+                        I am a Senior Staff Research Scientist at Google Zurich, where my team and I focus on human
+                        understanding and building state-of-the-art egocentric intelligence solutions for XR and beyond.
                     </p>
                     <p>
-                        My work focuses on bridging the gap between physical and digital worlds through advanced depth
-                        estimation,
-                        volumetric video, and neural rendering techniques.
+                        Previously at Google, I developed novel natural alpha matting and portrait relighting solutions,
+                        leveraged synthetic data generated from digital humans, and contributed to core features across
+                        Google Meet, Camera, Photos, and Slides. Before joining Google, I was a Researcher at Microsoft
+                        Research, where I contributed to the Holoportation project, and earned my PhD from the
+                        University of Alicante specializing in real-time 3D reconstruction and depth sensing.
                     </p>
-                </div>
-            </div>
-        </section>
-
-        <section id="research" class="section bg-light">
-            <div class="container">
-                <h2 class="section-title">Research Interests</h2>
-                <ul class="interests-list">
-                    <li>Computer Vision</li>
-                    <li>Machine Learning & Deep Learning</li>
-                    <li>Generative AI (GenAI)</li>
-                    <li>Digital Humans</li>
-                    <li>Neural Rendering</li>
-                    <li>Augmented & Virtual Reality (AR/VR)</li>
-                    <li>Depth Sensing & Estimation</li>
-                    <li>3D Reconstruction & Segmentation</li>
-                    <li>Real-time GPGPU Computing</li>
-                </ul>
-            </div>
-        </section>
-
-        <section id="projects" class="section">
-            <div class="container">
-                <h2 class="section-title">Selected Projects</h2>
-                <div class="project-grid">
-                    <article class="project-card">
-                        <img src="holoportation_thumb.png" alt="Holoportation Technology" class="project-img">
-                        <div class="project-content">
-                            <h3>Holoportation</h3>
-                            <p class="project-role">Microsoft Research</p>
-                            <p>
-                                A key contributor to the Holoportation project, a new type of 3D capture technology that
-                                allows high-quality
-                                3D models of people to be reconstructed, compressed, and transmitted anywhere in the
-                                world
-                                in real-time.
-                            </p>
-                        </div>
-                    </article>
-                    <article class="project-card">
-                        <img src="google_research_thumb.png" alt="Google Research AI" class="project-img">
-                        <div class="project-content">
-                            <h3>Google Research</h3>
-                            <p class="project-role">Google</p>
-                            <p>
-                                Working on advanced CV/ML integration for Google products, contributing to open-source
-                                initiatives,
-                                and exploring novel neural rendering approaches.
-                            </p>
-                        </div>
-                    </article>
                 </div>
             </div>
         </section>
 
         <section id="publications" class="section bg-light">
             <div class="container">
-                <h2 class="section-title">Selected Publications</h2>
-                <div class="publication-list">
-                    <!-- Placeholder for dynamic content or manual entry -->
-                    <div class="publication-item">
-                        <cite>Text to 3D Object Generation for Scalable Room Assembly</cite>
-                        <span class="conf">ICLR 2025 Workshop SynthData</span>
+                <h2 class="section-title">Publications</h2>
+                <p class="text-center scholar-subtitle">
+                    <a href="https://scholar.google.com/citations?hl=en&user=dznX1DMAAAAJ" target="_blank"
+                        rel="noopener noreferrer" class="scholar-link">
+                        See all publications on Google Scholar &rarr;
+                    </a>
+                </p>
+
+                <div class="pub-controls">
+                    <div id="view-mode-filters" class="view-mode-toggle text-center" role="group"
+                        aria-label="Filter between selected and all publications">
+                        <!-- Selected / All toggle injected here -->
                     </div>
-                    <div class="publication-item">
-                        <cite>CHOSEN: Contrastive Hypothesis Selection for Multi-View Depth Refinement</cite>
-                        <span class="conf">ECCV 2024 Wild3D</span>
+
+                    <div class="search-wrapper">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="search" id="pub-search" class="pub-search-input"
+                            placeholder="Search by title, co-author, or venue (e.g., SIGGRAPH, CVPR, NeRF)..."
+                            aria-label="Search publications">
                     </div>
-                    <div class="publication-item">
-                        <cite>Controllable Light Diffusion for Portraits</cite>
-                        <span class="conf">2023</span>
+
+                    <div id="category-filters" class="category-filters text-center" role="group"
+                        aria-label="Filter by topic">
+                        <!-- Category filters injected here -->
                     </div>
-                    <div class="publication-item">
-                        <cite>VoLux-GAN: A Generative Model for 3D Face Synthesis with HDRI Relighting</cite>
-                        <span class="conf">SIGGRAPH 2022</span>
+
+                    <div id="year-filters" class="year-filters text-center" role="group" aria-label="Filter by year">
+                        <!-- Year filters injected here -->
                     </div>
-                    <div class="publication-item">
-                        <cite>Neural Light Transport for Relighting and View Synthesis</cite>
-                        <span class="conf">ACM Transactions on Graphics, 2021</span>
-                    </div>
+
+                    <div id="pub-count" class="pub-count text-center" aria-live="polite"></div>
                 </div>
+
+                <div id="dynamic-publications" class="publication-list">
+                    <div class="text-center">Loading publications...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="research" class="section">
+            <div class="container">
+                <h2 class="section-title">Research Interests</h2>
+                <ul class="interests-list">
+                    <li>Computer Vision</li>
+                    <li>Machine Learning &amp; Deep Learning</li>
+                    <li>Generative AI (GenAI)</li>
+                    <li>Digital Humans</li>
+                    <li>Neural Rendering</li>
+                    <li>Augmented &amp; Virtual Reality (AR/VR)</li>
+                    <li>Depth Sensing &amp; Estimation</li>
+                    <li>3D Reconstruction &amp; Segmentation</li>
+                    <li>Real-time GPGPU Computing</li>
+                </ul>
             </div>
         </section>
     </main>
 
     <footer class="footer text-center">
         <div class="container">
-
-            <p>&copy; 2025 Sergio Orts Escolano. All rights reserved.</p>
+            <p>&copy; <span id="current-year">2026</span> Sergio Orts Escolano. All rights reserved.</p>
         </div>
     </footer>
+    <script src="scripts/publications.js"></script>
 </body>
 
 </html>
