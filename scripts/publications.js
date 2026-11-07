@@ -26,12 +26,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let publicationsData = [];
+    let rawBibtexSource = '';
     let currentViewMode = 'selected'; // 'selected' | 'all'
     let currentYearFilter = 'All';
     let currentCategoryFilter = 'All';
     let currentSearchQuery = '';
+    const previewThumbnails = new Map(); // slug -> dataUrl
 
-    const CATEGORIES = [
+    const DEFAULT_CATEGORIES = [
         { id: 'All', label: 'All Topics' },
         { id: 'genai', label: 'GenAI & Avatars', image: 'publications/images/cat_genai.png' },
         { id: '3d', label: '3D & Volumetric', image: 'publications/images/cat_3d.png' },
@@ -40,21 +42,33 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'cv', label: 'Computer Vision & ML', image: 'publications/images/cat_cv.png' }
     ];
 
-    function getCategoryInfo(title, venue = '') {
+    let CATEGORIES = DEFAULT_CATEGORIES.map(c => ({ ...c }));
+
+    function getCategoryById(catId) {
+        if (!catId) return null;
+        const norm = catId.trim().toLowerCase();
+        return CATEGORIES.find(c => c.id.toLowerCase() === norm && c.id !== 'All') || null;
+    }
+
+    function getCategoryInfo(title, venue = '', explicitCatId = '') {
+        if (explicitCatId) {
+            const explicitMatch = getCategoryById(explicitCatId);
+            if (explicitMatch) return explicitMatch;
+        }
         const text = `${title} ${venue}`;
         if (/\b(generative|gan|gantlitz|nerf|radiance|relight|relighting|lighting|portrait|face|facial|avatar|avatars|magicmirror|diffusion|synthesis|human|humans)\b/i.test(text)) {
-            return CATEGORIES[1]; // GenAI & Avatars
+            return getCategoryById('genai') || CATEGORIES[1] || CATEGORIES[CATEGORIES.length - 1];
         }
         if (/\b(depth|stereo|rgb-d|rgbd|tof|time-of-flight|disparity|dual-camera|dual-cameras|du2net|du²net)\b/i.test(text)) {
-            return CATEGORIES[3]; // Depth & Stereo
+            return getCategoryById('depth') || CATEGORIES[3] || CATEGORIES[CATEGORIES.length - 1];
         }
         if (/\b(holoportation|virtual reality|augmented reality|mixed reality|telepresence|vr|ar|xr|headset|tracking|pose|gesture|hand|hands|interactive)\b/i.test(text)) {
-            return CATEGORIES[4]; // AR/VR & Tracking
+            return getCategoryById('arvr') || CATEGORIES[4] || CATEGORIES[CATEGORIES.length - 1];
         }
         if (/\b(3d|volumetric|point cloud|point clouds|mesh|meshes|reconstruction|octree|geometry|surface|fusion4d|room assembly)\b/i.test(text)) {
-            return CATEGORIES[2]; // 3D & Volumetric
+            return getCategoryById('3d') || CATEGORIES[2] || CATEGORIES[CATEGORIES.length - 1];
         }
-        return CATEGORIES[5]; // Computer Vision & ML
+        return getCategoryById('cv') || CATEGORIES[5] || CATEGORIES[CATEGORIES.length - 1];
     }
 
     function decodeLatexEscapes(str) {
@@ -136,20 +150,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return Array.from(byTitle.values());
     }
 
+    function cleanBibtexForCopy(rawBlock) {
+        return rawBlock
+            .replace(/,?\s*\n\s*selected\s*=\s*\{[^}]*\}/gi, '')
+            .replace(/,?\s*\n\s*category\s*=\s*\{[^}]*\}/gi, '');
+    }
+
+    function parseCategoriesComment(bibtex) {
+        const match = bibtex.match(/@comment\s*\{\s*categories_json\s*=\s*(\[[\s\S]*?\])\s*\}/i);
+        if (match) {
+            try {
+                const parsed = JSON.parse(match[1]);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    const hasAll = parsed.some(c => c.id === 'All');
+                    CATEGORIES = hasAll ? parsed : [{ id: 'All', label: 'All Topics' }, ...parsed];
+                }
+            } catch (e) {
+                console.warn('Could not parse custom categories_json in publications.bib:', e);
+            }
+        }
+    }
+
     function parseBibtex(bibtex) {
+        parseCategoriesComment(bibtex);
         const entries = [];
         const entryRegex = /@(\w+)\s*\{([^,]+),\s*([\s\S]*?)\n\}/g;
         let match;
 
         while ((match = entryRegex.exec(bibtex)) !== null) {
             const type = match[1].toLowerCase();
-            if (type === 'proceedings') continue;
+            if (type === 'proceedings' || type === 'comment') continue;
 
             const key = match[2].trim();
             const content = match[3];
-            // Strip custom 'selected = {...}' line from copied BibTeX
-            const rawBibtex = match[0].replace(/,?\s*\n\s*selected\s*=\s*\{[^}]*\}/gi, '');
-            const entry = { type, key, rawBibtex };
+            const rawBlock = match[0];
+            const rawBibtex = cleanBibtexForCopy(rawBlock);
+            const entry = { type, key, rawBlock, rawBibtex };
 
             const fieldRegex = /([a-zA-Z0-9_]+)\s*=\s*\{/g;
             let fieldMatch;
@@ -173,8 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (entry.title && entry.author) {
+                const explicitCat = (entry.category || '').trim();
+                entry.explicitCategory = explicitCat;
                 entry.venue = formatVenue(entry);
-                entry.category = getCategoryInfo(entry.title, entry.venue);
+                entry.category = getCategoryInfo(entry.title, entry.venue, explicitCat);
                 entry.isSelected = /^(true|yes|1)$/i.test((entry.selected || '').trim());
                 entries.push(entry);
             }
@@ -185,6 +223,63 @@ document.addEventListener('DOMContentLoaded', () => {
             const yearB = parseInt(b.year, 10) || 0;
             return yearB - yearA;
         });
+    }
+
+    function buildEntryBlock(entry) {
+        let block = entry.rawBlock ? cleanBibtexForCopy(entry.rawBlock).trim() : '';
+        if (!block || entry._fieldsEdited) {
+            const type = entry.type || 'article';
+            const lines = [];
+            if (entry.author) lines.push(`  author       = {${entry.author}}`);
+            if (entry.title) lines.push(`  title        = {${entry.title}}`);
+            if (entry.journal) lines.push(`  journal      = {${entry.journal}}`);
+            if (entry.booktitle) lines.push(`  booktitle    = {${entry.booktitle}}`);
+            if (entry.volume) lines.push(`  volume       = {${entry.volume}}`);
+            if (entry.number) lines.push(`  number       = {${entry.number}}`);
+            if (entry.pages) lines.push(`  pages        = {${entry.pages}}`);
+            if (entry.publisher) lines.push(`  publisher    = {${entry.publisher}}`);
+            if (entry.institution) lines.push(`  institution  = {${entry.institution}}`);
+            if (entry.year) lines.push(`  year         = {${entry.year}}`);
+            if (entry.url) lines.push(`  url          = {${entry.url}}`);
+            if (entry.doi) lines.push(`  doi          = {${entry.doi}}`);
+            if (entry.eprint) {
+                lines.push(`  eprinttype   = {arXiv}`);
+                lines.push(`  eprint       = {${entry.eprint}}`);
+            }
+            block = `@${type}{${entry.key},\n${lines.join(',\n')}\n}`;
+        }
+
+        // Inject explicit category and selected flags before closing brace
+        const extraLines = [];
+        if (entry.explicitCategory) {
+            extraLines.push(`  category     = {${entry.explicitCategory}}`);
+        }
+        if (entry.isSelected) {
+            extraLines.push(`  selected     = {true}`);
+        }
+
+        if (extraLines.length > 0) {
+            block = block.replace(/\s*\n\}$/, `,\n${extraLines.join(',\n')}\n}`);
+        }
+        return block;
+    }
+
+    function serializeBibtex(entries = publicationsData, categories = CATEGORIES) {
+        const parts = [];
+        const defaultJson = JSON.stringify(DEFAULT_CATEGORIES);
+        const currentJson = JSON.stringify(categories);
+        if (currentJson !== defaultJson) {
+            parts.push(`@comment{categories_json = ${JSON.stringify(categories, null, 2)}}`);
+        }
+        const sorted = [...entries].sort((a, b) => {
+            const yearA = parseInt(a.year, 10) || 0;
+            const yearB = parseInt(b.year, 10) || 0;
+            return yearB - yearA;
+        });
+        for (const entry of sorted) {
+            parts.push(buildEntryBlock(entry));
+        }
+        return parts.join('\n\n') + '\n';
     }
 
     function createAuthorElement(authorStr) {
@@ -274,10 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const img = document.createElement('img');
             const thumbSlug = pub.key.replace(/[^a-zA-Z0-9_-]/g, '_');
-            img.src = `publications/thumbs/${thumbSlug}.jpg`;
+            img.src = previewThumbnails.has(thumbSlug)
+                ? previewThumbnails.get(thumbSlug)
+                : `publications/thumbs/${thumbSlug}.jpg`;
             img.onerror = () => {
                 img.onerror = null;
-                img.src = pub.category.image;
+                img.src = pub.category.image || 'publications/images/cat_cv.png';
             };
             img.className = 'publication-img';
             img.alt = `Thumbnail for ${pub.title}`;
@@ -429,6 +526,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function refreshAll() {
+        publicationsData.forEach(pub => {
+            pub.venue = formatVenue(pub);
+            pub.category = getCategoryInfo(pub.title, pub.venue, pub.explicitCategory || '');
+            pub.rawBibtex = cleanBibtexForCopy(buildEntryBlock(pub));
+        });
+        renderViewModeFilters();
+        renderCategoryFilters();
+        renderYearFilters();
+        renderPublications();
+    }
+
+    window.PublicationsApp = {
+        getEntries: () => publicationsData,
+        setEntries: (newEntries) => {
+            publicationsData = newEntries;
+            refreshAll();
+        },
+        getCategories: () => CATEGORIES,
+        setCategories: (newCats) => {
+            const hasAll = newCats.some(c => c.id === 'All');
+            CATEGORIES = hasAll ? newCats : [{ id: 'All', label: 'All Topics' }, ...newCats];
+            if (currentCategoryFilter !== 'All' && !CATEGORIES.some(c => c.id === currentCategoryFilter)) {
+                currentCategoryFilter = 'All';
+            }
+            refreshAll();
+        },
+        getDefaultCategories: () => DEFAULT_CATEGORIES.map(c => ({ ...c })),
+        getCategoryInfo: (title, venue, explicitCatId) => getCategoryInfo(title, venue, explicitCatId),
+        parseBibtex: (bib) => parseBibtex(bib),
+        serializeBibtex: (entries, cats) => serializeBibtex(entries || publicationsData, cats || CATEGORIES),
+        buildEntryBlock: (entry) => buildEntryBlock(entry),
+        setPreviewThumbnail: (slug, dataUrl) => {
+            previewThumbnails.set(slug, dataUrl);
+            renderPublications();
+        },
+        getPreviewThumbnail: (slug) => previewThumbnails.get(slug),
+        refreshUI: () => refreshAll(),
+        getRawBibtexSource: () => rawBibtexSource
+    };
+
     fetch('publications.bib')
         .then(response => {
             if (!response.ok) {
@@ -437,6 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.text();
         })
         .then(data => {
+            rawBibtexSource = data;
             publicationsData = parseBibtex(data);
             if (publicationsData.length > 0) {
                 const hasSelected = publicationsData.some(p => p.isSelected);
@@ -448,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 publicationsContainer.innerHTML = '<div class="text-center">No publications found in the BibTeX file.</div>';
             }
+            window.dispatchEvent(new CustomEvent('publicationsLoaded'));
         })
         .catch(error => {
             console.error('Error fetching publications:', error);
