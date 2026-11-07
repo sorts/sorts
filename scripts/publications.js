@@ -104,6 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (entry.booktitle) {
             return entry.booktitle;
         }
+        if (entry.institution) {
+            return entry.institution;
+        }
+        if (entry.publisher) {
+            return entry.publisher;
+        }
         return '';
     }
 
