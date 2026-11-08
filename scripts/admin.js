@@ -355,6 +355,9 @@
                             <button type="button" class="admin-btn admin-btn-secondary" id="admin-add-entry-btn">
                                 + Add BibTeX Entry
                             </button>
+                            <button type="button" class="admin-btn admin-btn-secondary" id="admin-manage-news-btn">
+                                📰 News Timeline
+                            </button>
                             <button type="button" class="admin-btn admin-btn-secondary" id="admin-manage-cats-btn">
                                 🏷️ Categories
                             </button>
@@ -435,6 +438,7 @@
         document.getElementById('admin-lock-btn-top').onclick = lockAdminPanel;
         document.getElementById('admin-find-new-btn').onclick = toggleDiscoveryDrawer;
         document.getElementById('admin-add-entry-btn').onclick = () => openEditEntryModal(null);
+        document.getElementById('admin-manage-news-btn').onclick = openNewsModal;
         document.getElementById('admin-manage-cats-btn').onclick = openCategoriesModal;
         document.getElementById('admin-gh-settings-btn').onclick = openGitHubSettingsModal;
         document.getElementById('admin-publish-github-btn').onclick = publishToGitHub;
@@ -1303,6 +1307,95 @@
             renderAdminPanel();
             close();
             showToast('Categories updated', 'success');
+        };
+    }
+
+    function openNewsModal() {
+        const newsList = (window.PublicationsApp.getNews() || []).map(n => ({ ...n }));
+
+        let modal = document.getElementById('admin-news-modal');
+        if (modal) modal.remove();
+
+        modal = document.createElement('div');
+        modal.id = 'admin-news-modal';
+        modal.className = 'admin-modal-overlay open';
+        modal.innerHTML = `
+            <div class="admin-modal admin-modal-lg" role="dialog" aria-modal="true">
+                <div class="admin-modal-header">
+                    <h3>📰 Manage News Timeline Spine</h3>
+                    <button type="button" class="admin-modal-close" id="news-modal-close">&times;</button>
+                </div>
+                <div class="admin-modal-body">
+                    <p class="admin-muted-text">Add, edit, or reorder items shown in the floating right-side Timeline Spine. Changes are saved inside <code>publications.bib</code>.</p>
+                    <div id="admin-news-editor-list" class="admin-cat-editor-list"></div>
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-secondary" id="admin-add-news-row-btn" style="margin-top:0.75rem;">
+                        + Add News Item
+                    </button>
+                </div>
+                <div class="admin-modal-footer">
+                    <button type="button" class="admin-btn admin-btn-secondary" id="news-reset-defaults-btn" style="margin-right:auto;">Reset to Defaults</button>
+                    <button type="button" class="admin-btn admin-btn-secondary" id="news-cancel-btn">Cancel</button>
+                    <button type="button" class="admin-btn admin-btn-primary" id="news-save-btn">Save News Timeline</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const listEl = modal.querySelector('#admin-news-editor-list');
+
+        const renderRows = () => {
+            listEl.innerHTML = '';
+            newsList.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.className = 'admin-cat-edit-row';
+                row.innerHTML = `
+                    <input type="text" class="admin-input news-date-input" placeholder="Date (e.g. May '26)" value="${escapeHtml(item.date || '')}" style="width:95px;">
+                    <input type="text" class="admin-input news-tag-input" placeholder="Tag (e.g. CVPR 2026)" value="${escapeHtml(item.tag || '')}" style="width:125px;">
+                    <input type="text" class="admin-input news-text-input" placeholder="Headline text..." value="${escapeHtml(item.text || '')}" style="flex:1;">
+                    <input type="text" class="admin-input news-url-input" placeholder="Link (#publications or https://...)" value="${escapeHtml(item.url || '')}" style="width:150px;">
+                    <button type="button" class="admin-btn admin-btn-sm admin-btn-danger-outline news-del-btn" title="Remove item">&times;</button>
+                `;
+                row.querySelector('.news-date-input').oninput = (e) => { item.date = e.target.value; };
+                row.querySelector('.news-tag-input').oninput = (e) => { item.tag = e.target.value; };
+                row.querySelector('.news-text-input').oninput = (e) => { item.text = e.target.value; };
+                row.querySelector('.news-url-input').oninput = (e) => { item.url = e.target.value.trim(); };
+                row.querySelector('.news-del-btn').onclick = () => {
+                    newsList.splice(idx, 1);
+                    renderRows();
+                };
+                listEl.appendChild(row);
+            });
+        };
+
+        renderRows();
+
+        modal.querySelector('#admin-add-news-row-btn').onclick = () => {
+            newsList.unshift({
+                date: "New '26",
+                tag: "Update",
+                text: "",
+                url: "#publications"
+            });
+            renderRows();
+        };
+
+        const close = () => modal.remove();
+        modal.querySelector('#news-modal-close').onclick = close;
+        modal.querySelector('#news-cancel-btn').onclick = close;
+
+        modal.querySelector('#news-reset-defaults-btn').onclick = () => {
+            const defaults = window.PublicationsApp.getDefaultNews();
+            newsList.length = 0;
+            defaults.forEach(d => newsList.push({ ...d }));
+            renderRows();
+        };
+
+        modal.querySelector('#news-save-btn').onclick = () => {
+            const valid = newsList.filter(n => n.date && n.text);
+            window.PublicationsApp.setNews(valid);
+            markBibModified();
+            close();
+            showToast('News Timeline updated', 'success');
         };
     }
 

@@ -44,6 +44,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let CATEGORIES = DEFAULT_CATEGORIES.map(c => ({ ...c }));
 
+    const DEFAULT_NEWS = [
+        {
+            date: "May '26",
+            tag: "CVPR 2026",
+            text: "2 papers accepted to CVPR 2026 (Keypoint Action Tokens & EnvGS).",
+            url: "#publications"
+        },
+        {
+            date: "Dec '25",
+            tag: "SIGGRAPH Asia",
+            text: "Virtually Being presented at SIGGRAPH Asia 2025.",
+            url: "#publications"
+        },
+        {
+            date: "Jun '25",
+            tag: "CVPR 2025",
+            text: "Quaffure & Purrception presented at CVPR 2025.",
+            url: "#publications"
+        },
+        {
+            date: "Oct '24",
+            tag: "ECCV 2024",
+            text: "Relightable Gaussian Codec Avatars presented at ECCV 2024.",
+            url: "#publications"
+        },
+        {
+            date: "Jul '24",
+            tag: "SIGGRAPH",
+            text: "Gaussian Eigen Models for Human Heads published in ACM TOG.",
+            url: "#publications"
+        }
+    ];
+
+    let NEWS_ITEMS = DEFAULT_NEWS.map(n => ({ ...n }));
+    const savedCompactPref = sessionStorage.getItem('soe_news_spine_compact');
+    let isNewsSpineCompact = savedCompactPref !== null
+        ? savedCompactPref === 'true'
+        : (typeof window !== 'undefined' && window.innerWidth < 1280);
+    let isNewsShowAll = false;
+
     function getCategoryById(catId) {
         if (!catId) return null;
         const norm = String(catId).trim().toLowerCase();
@@ -205,6 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('Could not parse custom categories_json in publications.bib:', e);
             }
         }
+
+        const newsMatch = bibtex.match(/@comment\s*\{\s*news_json\s*=\s*(\[[\s\S]*?\])\s*\}/i);
+        if (newsMatch) {
+            try {
+                const parsedNews = JSON.parse(newsMatch[1]);
+                if (Array.isArray(parsedNews)) {
+                    NEWS_ITEMS = parsedNews;
+                }
+            } catch (e) {
+                console.warn('Could not parse custom news_json in publications.bib:', e);
+            }
+        }
     }
 
     function parseBibtex(bibtex) {
@@ -305,12 +357,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return block;
     }
 
-    function serializeBibtex(entries = publicationsData, categories = CATEGORIES) {
+    function serializeBibtex(entries = publicationsData, categories = CATEGORIES, news = NEWS_ITEMS) {
         const parts = [];
         const defaultJson = JSON.stringify(DEFAULT_CATEGORIES);
         const currentJson = JSON.stringify(categories);
         if (currentJson !== defaultJson) {
             parts.push(`@comment{categories_json = ${JSON.stringify(categories, null, 2)}}`);
+        }
+        const defaultNewsJson = JSON.stringify(DEFAULT_NEWS);
+        const currentNewsJson = JSON.stringify(news);
+        if (currentNewsJson !== defaultNewsJson) {
+            parts.push(`@comment{news_json = ${JSON.stringify(news, null, 2)}}`);
         }
         const sorted = [...entries].sort((a, b) => {
             const yearA = parseInt(a.year, 10) || 0;
@@ -571,6 +628,121 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function renderNewsSpine() {
+        const spineEl = document.getElementById('news-timeline-spine');
+        if (!spineEl) return;
+
+        if (!Array.isArray(NEWS_ITEMS) || NEWS_ITEMS.length === 0) {
+            spineEl.style.display = 'none';
+            return;
+        }
+        spineEl.style.display = '';
+        spineEl.classList.toggle('is-compact', isNewsSpineCompact);
+
+        const visibleLimit = 3;
+        const displayedItems = (!isNewsSpineCompact && !isNewsShowAll && NEWS_ITEMS.length > visibleLimit)
+            ? NEWS_ITEMS.slice(0, visibleLimit)
+            : NEWS_ITEMS;
+
+        spineEl.innerHTML = '';
+
+        // Top Header Row
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'news-spine-header';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'news-spine-title';
+        titleSpan.innerHTML = `<span class="news-spine-live-dot"></span>Timeline`;
+        headerDiv.appendChild(titleSpan);
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'news-spine-toggle-btn';
+        toggleBtn.title = isNewsSpineCompact ? 'Expand news timeline' : 'Collapse to compact timeline spine';
+        toggleBtn.innerHTML = isNewsSpineCompact ? '|&larr; Expand' : '&rarr;| Compact';
+        toggleBtn.onclick = () => {
+            isNewsSpineCompact = !isNewsSpineCompact;
+            sessionStorage.setItem('soe_news_spine_compact', String(isNewsSpineCompact));
+            renderNewsSpine();
+        };
+        headerDiv.appendChild(toggleBtn);
+        spineEl.appendChild(headerDiv);
+
+        // Vertical Spine Rail
+        const railDiv = document.createElement('div');
+        railDiv.className = 'news-spine-rail';
+
+        displayedItems.forEach((item, idx) => {
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = `news-spine-item ${idx === 0 ? 'is-latest' : ''}`;
+
+            const dotSpan = document.createElement('span');
+            dotSpan.className = 'news-spine-dot';
+            nodeDiv.appendChild(dotSpan);
+
+            const metaLine = document.createElement('div');
+            metaLine.className = 'news-spine-meta';
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'news-spine-date';
+            dateSpan.textContent = item.date || '';
+            if (isNewsSpineCompact) {
+                dateSpan.title = `${item.date}: ${item.text || ''}`;
+                dateSpan.style.cursor = 'pointer';
+                dateSpan.onclick = () => {
+                    isNewsSpineCompact = false;
+                    sessionStorage.setItem('soe_news_spine_compact', 'false');
+                    renderNewsSpine();
+                };
+            }
+            metaLine.appendChild(dateSpan);
+
+            if (item.tag && !isNewsSpineCompact) {
+                const tagSpan = document.createElement('span');
+                tagSpan.className = 'news-spine-tag';
+                tagSpan.textContent = item.tag;
+                metaLine.appendChild(tagSpan);
+            }
+            nodeDiv.appendChild(metaLine);
+
+            if (!isNewsSpineCompact && item.text) {
+                const detailDiv = document.createElement('div');
+                detailDiv.className = 'news-spine-detail';
+                if (item.url) {
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    if (/^https?:\/\//i.test(item.url)) {
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                    }
+                    a.textContent = item.text;
+                    detailDiv.appendChild(a);
+                } else {
+                    detailDiv.textContent = item.text;
+                }
+                nodeDiv.appendChild(detailDiv);
+            }
+
+            railDiv.appendChild(nodeDiv);
+        });
+
+        spineEl.appendChild(railDiv);
+
+        if (!isNewsSpineCompact && NEWS_ITEMS.length > visibleLimit) {
+            const moreBtn = document.createElement('button');
+            moreBtn.type = 'button';
+            moreBtn.className = 'news-spine-more-btn';
+            moreBtn.textContent = isNewsShowAll
+                ? 'Show less \u25B4'
+                : `Show older (${NEWS_ITEMS.length - visibleLimit}) \u25BE`;
+            moreBtn.onclick = () => {
+                isNewsShowAll = !isNewsShowAll;
+                renderNewsSpine();
+            };
+            spineEl.appendChild(moreBtn);
+        }
+    }
+
     function refreshAll() {
         publicationsData.forEach(pub => {
             pub.venue = formatVenue(pub);
@@ -583,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pub.category = pub.categories[0];
             pub.rawBibtex = cleanBibtexForCopy(buildEntryBlock(pub));
         });
+        renderNewsSpine();
         renderViewModeFilters();
         renderCategoryFilters();
         renderYearFilters();
@@ -605,11 +778,17 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshAll();
         },
         getDefaultCategories: () => DEFAULT_CATEGORIES.map(c => ({ ...c })),
+        getNews: () => NEWS_ITEMS,
+        setNews: (newNews) => {
+            NEWS_ITEMS = Array.isArray(newNews) ? newNews : [];
+            renderNewsSpine();
+        },
+        getDefaultNews: () => DEFAULT_NEWS.map(n => ({ ...n })),
         getCategoryInfo: (title, venue, explicitCatId) => getCategoryInfo(title, venue, explicitCatId),
         getCategoriesInfo: (title, venue, explicitCats) => getCategoriesInfo(title, venue, explicitCats),
         parseExplicitCategoryIds: (rawVal) => parseExplicitCategoryIds(rawVal),
         parseBibtex: (bib) => parseBibtex(bib),
-        serializeBibtex: (entries, cats) => serializeBibtex(entries || publicationsData, cats || CATEGORIES),
+        serializeBibtex: (entries, cats, news) => serializeBibtex(entries || publicationsData, cats || CATEGORIES, news || NEWS_ITEMS),
         buildEntryBlock: (entry) => buildEntryBlock(entry),
         setPreviewThumbnail: (slug, dataUrl) => {
             previewThumbnails.set(slug, dataUrl);
@@ -619,6 +798,8 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshUI: () => refreshAll(),
         getRawBibtexSource: () => rawBibtexSource
     };
+
+    renderNewsSpine();
 
     fetch('publications.bib')
         .then(response => {
@@ -630,6 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             rawBibtexSource = data;
             publicationsData = parseBibtex(data);
+            renderNewsSpine();
             if (publicationsData.length > 0) {
                 const hasSelected = publicationsData.some(p => p.isSelected);
                 currentViewMode = hasSelected ? 'selected' : 'all';

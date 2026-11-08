@@ -1456,3 +1456,204 @@ a:hover {
         justify-content: space-between;
     }
 }
+
+/* =========================================================================
+   Floating Right-Side Collapsible News Timeline Spine
+   ========================================================================= */
+.news-spine {
+    position: fixed;
+    top: 5.5rem;
+    right: 1.25rem;
+    z-index: 90;
+    width: 268px;
+    background: var(--header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 0.85rem;
+    padding: 0.85rem 0.95rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12);
+    transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), padding 0.22s ease, opacity 0.2s ease, border-color 0.2s ease;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+}
+
+.news-spine:hover {
+    border-color: var(--accent-color);
+}
+
+.news-spine.is-compact {
+    width: 102px;
+    padding: 0.65rem 0.6rem;
+    opacity: 0.82;
+}
+
+.news-spine.is-compact:hover {
+    opacity: 1;
+}
+
+.news-spine-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.65rem;
+}
+
+.news-spine.is-compact .news-spine-header {
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.news-spine-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted-color);
+}
+
+.news-spine.is-compact .news-spine-title {
+    display: none;
+}
+
+.news-spine-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+}
+
+.news-spine-toggle-btn {
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    color: var(--accent-color);
+    font-family: var(--font-family);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.48rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.news-spine.is-compact .news-spine-toggle-btn {
+    width: 100%;
+    text-align: center;
+    padding: 0.2rem 0.3rem;
+}
+
+.news-spine-toggle-btn:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #FFFFFF;
+}
+
+.news-spine-rail {
+    position: relative;
+    padding-left: 0.85rem;
+    margin-left: 0.25rem;
+    border-left: 2px solid rgba(14, 165, 233, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.news-spine-item {
+    position: relative;
+}
+
+.news-spine-dot {
+    position: absolute;
+    left: -1.16rem;
+    top: 0.26rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-color);
+    border: 2px solid var(--card-bg);
+}
+
+.news-spine-item.is-latest .news-spine-dot {
+    background: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
+}
+
+.news-spine-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    line-height: 1.2;
+}
+
+.news-spine-date {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--muted-color);
+}
+
+.news-spine-item.is-latest .news-spine-date {
+    color: var(--accent-color);
+}
+
+.news-spine-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.08rem 0.38rem;
+    border-radius: 0.28rem;
+    background: var(--badge-bg);
+    color: var(--badge-text);
+}
+
+.news-spine-detail {
+    font-size: 0.78rem;
+    line-height: 1.38;
+    color: var(--primary-color);
+    margin-top: 0.18rem;
+}
+
+.news-spine-detail a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.news-spine-detail a:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.news-spine-more-btn {
+    margin-top: 0.65rem;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.45rem;
+    font-family: var(--font-family);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    cursor: pointer;
+    text-align: left;
+}
+
+.news-spine-more-btn:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .news-spine {
+        top: auto;
+        bottom: 1rem;
+        right: 0.85rem;
+        max-height: 60vh;
+    }
+}
