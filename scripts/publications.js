@@ -46,42 +46,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFAULT_NEWS = [
         {
-            date: "May '26",
-            tag: "CVPR 2026",
-            text: "2 papers accepted to CVPR 2026 (Keypoint Action Tokens & EnvGS).",
-            url: "#publications"
-        },
-        {
             date: "Dec '25",
-            tag: "SIGGRAPH Asia",
-            text: "Virtually Being presented at SIGGRAPH Asia 2025.",
-            url: "#publications"
-        },
-        {
-            date: "Jun '25",
-            tag: "CVPR 2025",
-            text: "Quaffure & Purrception presented at CVPR 2025.",
-            url: "#publications"
-        },
-        {
-            date: "Oct '24",
-            tag: "ECCV 2024",
-            text: "Relightable Gaussian Codec Avatars presented at ECCV 2024.",
-            url: "#publications"
-        },
-        {
-            date: "Jul '24",
-            tag: "SIGGRAPH",
-            text: "Gaussian Eigen Models for Human Heads published in ACM TOG.",
-            url: "#publications"
+            tag: "Galaxy XR",
+            text: "Likeness launch in Galaxy XR.",
+            url: ""
         }
     ];
 
     let NEWS_ITEMS = DEFAULT_NEWS.map(n => ({ ...n }));
     const savedCompactPref = sessionStorage.getItem('soe_news_spine_compact');
-    let isNewsSpineCompact = savedCompactPref !== null
-        ? savedCompactPref === 'true'
-        : (typeof window !== 'undefined' && window.innerWidth < 1280);
+    let isNewsSpineCompact = savedCompactPref !== null ? savedCompactPref === 'true' : false;
+    let isMobileInlineCollapsed = true;
     let isNewsShowAll = false;
 
     function getCategoryById(catId) {
@@ -637,6 +612,103 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         spineEl.style.display = '';
+
+        const isInlineMode = typeof window !== 'undefined' && window.innerWidth < 1400;
+        spineEl.classList.toggle('is-inline-mode', isInlineMode);
+
+        if (isInlineMode) {
+            spineEl.classList.remove('is-compact');
+            spineEl.classList.toggle('is-inline-collapsed', isMobileInlineCollapsed);
+            spineEl.innerHTML = '';
+
+            const latest = NEWS_ITEMS[0];
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'news-spine-header news-inline-bar';
+            headerDiv.onclick = () => {
+                isMobileInlineCollapsed = !isMobileInlineCollapsed;
+                renderNewsSpine();
+            };
+
+            const leftWrap = document.createElement('div');
+            leftWrap.className = 'news-inline-summary';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'news-spine-title';
+            titleSpan.innerHTML = `<span class="news-spine-live-dot"></span>Timeline`;
+            leftWrap.appendChild(titleSpan);
+
+            if (isMobileInlineCollapsed && latest) {
+                const previewSpan = document.createElement('span');
+                previewSpan.className = 'news-inline-latest-text';
+                previewSpan.innerHTML = `<strong>${latest.date || ''}:</strong> ${latest.text || ''}`;
+                leftWrap.appendChild(previewSpan);
+            }
+            headerDiv.appendChild(leftWrap);
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'news-spine-toggle-btn';
+            toggleBtn.textContent = isMobileInlineCollapsed
+                ? `Show all (${NEWS_ITEMS.length}) \u25BE`
+                : 'Collapse \u25B4';
+            headerDiv.appendChild(toggleBtn);
+            spineEl.appendChild(headerDiv);
+
+            if (!isMobileInlineCollapsed) {
+                const railDiv = document.createElement('div');
+                railDiv.className = 'news-spine-rail news-inline-rail';
+
+                NEWS_ITEMS.forEach((item, idx) => {
+                    const nodeDiv = document.createElement('div');
+                    nodeDiv.className = `news-spine-item ${idx === 0 ? 'is-latest' : ''}`;
+
+                    const dotSpan = document.createElement('span');
+                    dotSpan.className = 'news-spine-dot';
+                    nodeDiv.appendChild(dotSpan);
+
+                    const metaLine = document.createElement('div');
+                    metaLine.className = 'news-spine-meta';
+
+                    const dateSpan = document.createElement('span');
+                    dateSpan.className = 'news-spine-date';
+                    dateSpan.textContent = item.date || '';
+                    metaLine.appendChild(dateSpan);
+
+                    if (item.tag) {
+                        const tagSpan = document.createElement('span');
+                        tagSpan.className = 'news-spine-tag';
+                        tagSpan.textContent = item.tag;
+                        metaLine.appendChild(tagSpan);
+                    }
+                    nodeDiv.appendChild(metaLine);
+
+                    if (item.text) {
+                        const detailDiv = document.createElement('div');
+                        detailDiv.className = 'news-spine-detail';
+                        if (item.url) {
+                            const a = document.createElement('a');
+                            a.href = item.url;
+                            if (/^https?:\/\//i.test(item.url)) {
+                                a.target = '_blank';
+                                a.rel = 'noopener noreferrer';
+                            }
+                            a.textContent = item.text;
+                            detailDiv.appendChild(a);
+                        } else {
+                            detailDiv.textContent = item.text;
+                        }
+                        nodeDiv.appendChild(detailDiv);
+                    }
+                    railDiv.appendChild(nodeDiv);
+                });
+
+                spineEl.appendChild(railDiv);
+            }
+            return;
+        }
+
+        // Desktop Floating Right-Side Timeline Spine Mode (>= 1400px)
+        spineEl.classList.remove('is-inline-collapsed');
         spineEl.classList.toggle('is-compact', isNewsSpineCompact);
 
         const visibleLimit = 3;
@@ -741,6 +813,12 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             spineEl.appendChild(moreBtn);
         }
+    }
+
+    if (typeof window !== 'undefined' && window.matchMedia) {
+        window.matchMedia('(max-width: 1399px)').addEventListener('change', () => {
+            renderNewsSpine();
+        });
     }
 
     function refreshAll() {
