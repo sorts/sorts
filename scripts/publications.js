@@ -879,7 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderNewsSpine();
 
-    fetch('publications.bib')
+    fetch('publications.bib', { cache: 'no-cache' })
         .then(response => {
             if (!response.ok) {
                 throw new Error('Could not load publications.bib');
