@@ -46,6 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEFAULT_NEWS = [
         {
+            date: "Nov '26",
+            tag: "GNM Head",
+            text: "Released the GNM Head model on GitHub \u2197",
+            url: "https://github.com/google/GNM"
+        },
+        {
             date: "Dec '25",
             tag: "Galaxy XR",
             text: "Likeness launch in Galaxy XR.",
