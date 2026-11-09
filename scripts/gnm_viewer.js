@@ -11,10 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showWireframe: false,
         yawDeg: 0.0,
         pitchDeg: 0.0,
-        distance: 0.92,
+        distance: 0.85,
         fovDeg: 20.0,
         panX: 0.0,
-        panY: -0.008
+        panY: -0.006
     };
 
     let gl = null;
@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         state.animMode = 'gnm_spin';
                         state.panX = 0.0;
-                        state.panY = -0.008;
-                        state.distance = 0.92;
+                        state.panY = -0.006;
+                        state.distance = 0.85;
                     }
                     syncControlButtons();
                 });
