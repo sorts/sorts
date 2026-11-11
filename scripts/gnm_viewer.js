@@ -296,13 +296,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 uniform sampler2D uEdgeflowTex;
                 uniform float uShowEdgeflow;
                 uniform int uIsWirePass;
+                uniform int uIsRetro8Bit;
 
                 const float PI = 3.141592653589793;
                 const float MIN_ROUGHNESS = 0.04;
 
                 void main() {
                     if (uIsWirePass == 1) {
-                        gl_FragColor = vec4(0.05, 0.14, 0.24, 0.55);
+                        gl_FragColor = uIsRetro8Bit == 1
+                            ? vec4(0.0, 0.94, 1.0, 0.75)
+                            : vec4(0.05, 0.14, 0.24, 0.55);
                         return;
                     }
 
@@ -336,8 +339,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     vec3 radiance = vec3(3.34);
                     vec3 litColor = nl * radiance * (diffuseContrib + specContrib) * vColor;
+                    litColor = clamp(litColor, 0.0, 1.0);
+                    if (uIsRetro8Bit == 1) {
+                        litColor = floor(litColor * 5.0 + 0.5) / 5.0;
+                    }
 
-                    gl_FragColor = vec4(clamp(litColor, 0.0, 1.0), 1.0);
+                    gl_FragColor = vec4(litColor, 1.0);
                 }
             `;
 
@@ -365,7 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 uDepthBias: gl.getUniformLocation(prog, 'uDepthBias'),
                 uEdgeflowTex: gl.getUniformLocation(prog, 'uEdgeflowTex'),
                 uShowEdgeflow: gl.getUniformLocation(prog, 'uShowEdgeflow'),
-                uIsWirePass: gl.getUniformLocation(prog, 'uIsWirePass')
+                uIsWirePass: gl.getUniformLocation(prog, 'uIsWirePass'),
+                uIsRetro8Bit: gl.getUniformLocation(prog, 'uIsRetro8Bit')
             };
 
             const bufPos = gl.createBuffer();
@@ -476,11 +484,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     state.pitchDeg = Math.cos(dt * 1.6) * 5.0;
                 }
 
-                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const isRetro8Bit = document.documentElement.getAttribute('data-retro') === '8bit';
+                const dpr = isRetro8Bit ? 0.24 : Math.min(window.devicePixelRatio || 1, 2);
                 const cssW = canvasEl.clientWidth || 240;
                 const cssH = canvasEl.clientHeight || 248;
-                const w = Math.floor(cssW * dpr);
-                const h = Math.floor(cssH * dpr);
+                const w = Math.max(48, Math.floor(cssW * dpr));
+                const h = Math.max(48, Math.floor(cssH * dpr));
 
                 if (canvasEl.width !== w || canvasEl.height !== h) {
                     canvasEl.width = w;
@@ -488,7 +497,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 gl.viewport(0, 0, w, h);
-                gl.clearColor(0.059, 0.078, 0.110, 1.0);
+                if (isRetro8Bit) {
+                    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+                } else {
+                    gl.clearColor(0.059, 0.078, 0.110, 1.0);
+                }
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 gl.enable(gl.DEPTH_TEST);
 
@@ -500,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gl.uniform1f(loc.uDepthBias, 0.0);
                 gl.uniform1f(loc.uShowEdgeflow, state.showEdgeflow ? 1.0 : 0.0);
                 gl.uniform1i(loc.uIsWirePass, 0);
+                gl.uniform1i(loc.uIsRetro8Bit, isRetro8Bit ? 1 : 0);
 
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
