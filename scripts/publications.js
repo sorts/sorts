@@ -630,16 +630,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isInlineMode) {
             spineEl.classList.remove('is-compact');
-            spineEl.classList.toggle('is-inline-collapsed', isMobileInlineCollapsed);
+            spineEl.classList.remove('is-inline-collapsed');
             spineEl.innerHTML = '';
 
-            const latest = NEWS_ITEMS[0];
+            const mobileVisibleLimit = 3;
+            const hasMoreThanLimit = NEWS_ITEMS.length > mobileVisibleLimit;
+            const displayedMobileItems = (isMobileInlineCollapsed && hasMoreThanLimit)
+                ? NEWS_ITEMS.slice(0, mobileVisibleLimit)
+                : NEWS_ITEMS;
+
             const headerDiv = document.createElement('div');
             headerDiv.className = 'news-spine-header news-inline-bar';
-            headerDiv.onclick = () => {
-                isMobileInlineCollapsed = !isMobileInlineCollapsed;
-                renderNewsSpine();
-            };
+            if (hasMoreThanLimit) {
+                headerDiv.onclick = () => {
+                    isMobileInlineCollapsed = !isMobileInlineCollapsed;
+                    renderNewsSpine();
+                };
+            }
 
             const leftWrap = document.createElement('div');
             leftWrap.className = 'news-inline-summary';
@@ -648,74 +655,67 @@ document.addEventListener('DOMContentLoaded', () => {
             titleSpan.className = 'news-spine-title';
             titleSpan.innerHTML = `<span class="news-spine-live-dot"></span>Timeline`;
             leftWrap.appendChild(titleSpan);
-
-            if (isMobileInlineCollapsed && latest) {
-                const previewSpan = document.createElement('span');
-                previewSpan.className = 'news-inline-latest-text';
-                previewSpan.innerHTML = `<strong>${latest.date || ''}:</strong> ${latest.text || ''}`;
-                leftWrap.appendChild(previewSpan);
-            }
             headerDiv.appendChild(leftWrap);
 
-            const toggleBtn = document.createElement('button');
-            toggleBtn.type = 'button';
-            toggleBtn.className = 'news-spine-toggle-btn';
-            toggleBtn.textContent = isMobileInlineCollapsed
-                ? `Show all (${NEWS_ITEMS.length}) \u25BE`
-                : 'Collapse \u25B4';
-            headerDiv.appendChild(toggleBtn);
+            if (hasMoreThanLimit) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.className = 'news-spine-toggle-btn';
+                toggleBtn.textContent = isMobileInlineCollapsed
+                    ? `Show all (${NEWS_ITEMS.length}) \u25BE`
+                    : 'Show top 3 \u25B4';
+                headerDiv.appendChild(toggleBtn);
+            }
             spineEl.appendChild(headerDiv);
 
-            if (!isMobileInlineCollapsed) {
-                const railDiv = document.createElement('div');
-                railDiv.className = 'news-spine-rail news-inline-rail';
+            const railDiv = document.createElement('div');
+            railDiv.className = 'news-spine-rail news-inline-rail';
 
-                NEWS_ITEMS.forEach((item, idx) => {
-                    const nodeDiv = document.createElement('div');
-                    nodeDiv.className = `news-spine-item ${idx === 0 ? 'is-latest' : ''}`;
+            displayedMobileItems.forEach((item, idx) => {
+                const nodeDiv = document.createElement('div');
+                nodeDiv.className = `news-spine-item ${idx === 0 ? 'is-latest' : ''}`;
 
-                    const dotSpan = document.createElement('span');
-                    dotSpan.className = 'news-spine-dot';
-                    nodeDiv.appendChild(dotSpan);
+                const dotSpan = document.createElement('span');
+                dotSpan.className = 'news-spine-dot';
+                nodeDiv.appendChild(dotSpan);
 
-                    const metaLine = document.createElement('div');
-                    metaLine.className = 'news-spine-meta';
+                const metaLine = document.createElement('div');
+                metaLine.className = 'news-spine-meta';
 
-                    const dateSpan = document.createElement('span');
-                    dateSpan.className = 'news-spine-date';
-                    dateSpan.textContent = item.date || '';
-                    metaLine.appendChild(dateSpan);
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'news-spine-date';
+                dateSpan.textContent = item.date || '';
+                metaLine.appendChild(dateSpan);
 
-                    if (item.tag) {
-                        const tagSpan = document.createElement('span');
-                        tagSpan.className = 'news-spine-tag';
-                        tagSpan.textContent = item.tag;
-                        metaLine.appendChild(tagSpan);
-                    }
-                    nodeDiv.appendChild(metaLine);
+                if (item.tag) {
+                    const tagSpan = document.createElement('span');
+                    tagSpan.className = 'news-spine-tag';
+                    tagSpan.textContent = item.tag;
+                    metaLine.appendChild(tagSpan);
+                }
+                nodeDiv.appendChild(metaLine);
 
-                    if (item.text) {
-                        const detailDiv = document.createElement('div');
-                        detailDiv.className = 'news-spine-detail';
-                        if (item.url) {
-                            const a = document.createElement('a');
-                            a.href = item.url;
-                            if (/^https?:\/\//i.test(item.url)) {
-                                a.target = '_blank';
-                                a.rel = 'noopener noreferrer';
-                            }
-                            a.textContent = item.text;
-                            detailDiv.appendChild(a);
-                        } else {
-                            detailDiv.textContent = item.text;
+                if (item.text) {
+                    const detailDiv = document.createElement('div');
+                    detailDiv.className = 'news-spine-detail';
+                    if (item.url) {
+                        const a = document.createElement('a');
+                        a.href = item.url;
+                        if (/^https?:\/\//i.test(item.url)) {
+                            a.target = '_blank';
+                            a.rel = 'noopener noreferrer';
                         }
-                        nodeDiv.appendChild(detailDiv);
+                        a.textContent = item.text;
+                        detailDiv.appendChild(a);
+                    } else {
+                        detailDiv.textContent = item.text;
                     }
-                    railDiv.appendChild(nodeDiv);
-                });
+                    nodeDiv.appendChild(detailDiv);
+                }
+                railDiv.appendChild(nodeDiv);
+            });
 
-                spineEl.appendChild(railDiv);
-            }
+            spineEl.appendChild(railDiv);
             return;
         }
 
