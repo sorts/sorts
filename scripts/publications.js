@@ -52,6 +52,12 @@ document.addEventListener('DOMContentLoaded', () => {
             url: "https://github.com/google/GNM"
         },
         {
+            date: "Jun '26",
+            tag: "UA Award",
+            text: "Received the Alumni Embajador Award by the University of Alicante (UA) \u2197",
+            url: "https://alumni.ua.es/es/2021-2022/alumni-embajadores/alumni-embajadores.html"
+        },
+        {
             date: "Dec '25",
             tag: "Galaxy XR",
             text: "Likeness launch in Galaxy XR.",
