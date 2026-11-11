@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
             date: "Jun '26",
             tag: "UA Award",
             text: "Received the Alumni Embajador Award by the University of Alicante (UA) \u2197",
-            url: "https://alumni.ua.es/es/2021-2022/alumni-embajadores/alumni-embajadores.html"
+            url: "https://alumni.ua.es/es/2025-2026/talento-ua-gala-alumni-2026-invitacion.html"
         },
         {
             date: "Dec '25",
