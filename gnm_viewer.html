@@ -145,14 +145,14 @@
         }
         .bottom-dock {
             position: absolute;
-            bottom: 1.25rem;
+            bottom: 1.15rem;
             left: 50%;
             transform: translateX(-50%);
             z-index: 10;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.55rem;
+            gap: 0.5rem;
             width: max-content;
             max-width: calc(100vw - 2rem);
         }
@@ -162,21 +162,21 @@
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(148, 163, 184, 0.25);
             border-radius: 0.85rem;
-            padding: 0.45rem 0.65rem;
+            padding: 0.42rem 0.65rem;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: center;
-            gap: 0.4rem;
+            gap: 0.38rem;
             box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45);
         }
         .dock-label {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #64748b;
-            padding: 0 0.35rem;
+            padding: 0 0.3rem;
         }
         .dock-divider {
             width: 1px;
@@ -189,10 +189,10 @@
             border: 1px solid rgba(148, 163, 184, 0.22);
             color: #cbd5e1;
             font-family: inherit;
-            font-size: 0.76rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            padding: 0.36rem 0.7rem;
-            border-radius: 0.5rem;
+            padding: 0.34rem 0.65rem;
+            border-radius: 0.48rem;
             cursor: pointer;
             transition: all 0.15s ease;
         }
@@ -201,9 +201,19 @@
             color: #ffffff;
         }
         .ctrl-btn.is-active {
-            background: rgba(50, 156, 237, 0.22);
+            background: rgba(50, 156, 237, 0.24);
             border-color: #329ced;
             color: #7dd3fc;
+        }
+        .ctrl-btn.expr-play {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.55);
+            color: #6ee7b7;
+        }
+        .ctrl-btn.expr-play.is-active {
+            background: #10b981;
+            border-color: #10b981;
+            color: #ffffff;
         }
         .hint-pill {
             position: absolute;
@@ -240,7 +250,7 @@
                     <span class="hud-eyebrow">Google GNM Head v3.0 &middot; Multi-View 3D Fit</span>
                 </div>
                 <div class="hud-main-title">Sergio Orts Escolano</div>
-                <div class="hud-sub">17,049 3D vertices &middot; 33,788 triangles &middot; UDIM 1001 Edge-Flow PBR</div>
+                <div class="hud-sub" id="hudSubtext">17,049 3D vertices &middot; 33,788 triangles &middot; UDIM 1001 Edge-Flow PBR</div>
             </div>
 
             <div class="top-actions">
@@ -258,6 +268,21 @@
 
         <div class="bottom-dock">
             <div class="dock-row">
+                <span class="dock-label">Expressions</span>
+                <button type="button" class="ctrl-btn expr-play" id="btnPlayExpr">&#9654; Play Sequence</button>
+                <span class="dock-divider"></span>
+                <button type="button" class="ctrl-btn is-active" data-expr="neutral">Neutral</button>
+                <button type="button" class="ctrl-btn" data-expr="smile">Smile</button>
+                <button type="button" class="ctrl-btn" data-expr="wink_left">Left Wink</button>
+                <button type="button" class="ctrl-btn" data-expr="wink_right">Right Wink</button>
+                <button type="button" class="ctrl-btn" data-expr="open_mouth">Open Mouth</button>
+                <button type="button" class="ctrl-btn" data-expr="surprise">Surprise</button>
+                <button type="button" class="ctrl-btn" data-expr="pucker">Pucker</button>
+                <button type="button" class="ctrl-btn" data-expr="blow">Puff Cheeks</button>
+                <button type="button" class="ctrl-btn" data-expr="tongue">Tongue Out</button>
+            </div>
+
+            <div class="dock-row">
                 <span class="dock-label">Motion</span>
                 <button type="button" class="ctrl-btn is-active" data-anim="gnm_spin">GNM Spin (&plusmn;22&deg;)</button>
                 <button type="button" class="ctrl-btn" data-anim="turntable">360&deg; Orbit</button>
@@ -268,16 +293,13 @@
                 <button type="button" class="ctrl-btn is-active" id="btnEdgeflow">Edge-Flow UV</button>
                 <button type="button" class="ctrl-btn" id="btnWireframe">3D Wireframe</button>
                 <button type="button" class="ctrl-btn" id="btnNormals">Surface Normals</button>
-            </div>
 
-            <div class="dock-row">
+                <span class="dock-divider"></span>
                 <span class="dock-label">Camera</span>
                 <button type="button" class="ctrl-btn" data-cam="frontal">Frontal 0&deg;</button>
-                <button type="button" class="ctrl-btn" data-cam="right26">Right 3/4 (+26&deg;)</button>
-                <button type="button" class="ctrl-btn" data-cam="left26">Left 3/4 (-26&deg;)</button>
-                <button type="button" class="ctrl-btn" data-cam="uptilt24">Up-Tilt (+24&deg;)</button>
-                <button type="button" class="ctrl-btn" data-cam="profileL">Profile L (-75&deg;)</button>
-                <button type="button" class="ctrl-btn" data-cam="profileR">Profile R (+75&deg;)</button>
+                <button type="button" class="ctrl-btn" data-cam="right26">Right +26&deg;</button>
+                <button type="button" class="ctrl-btn" data-cam="left26">Left -26&deg;</button>
+                <button type="button" class="ctrl-btn" data-cam="uptilt24">Up-Tilt +24&deg;</button>
             </div>
         </div>
 
@@ -293,6 +315,8 @@
 
             const state = {
                 animMode: 'gnm_spin',
+                playExpressions: false,
+                selectedExpr: 'neutral',
                 showEdgeflow: true,
                 showWireframe: false,
                 showNormals: false,
@@ -303,6 +327,18 @@
                 panX: 0.0,
                 panY: -0.006
             };
+
+            const EXPR_SEQUENCE = [
+                { key: 'neutral',    label: 'Neutral',       holdSec: 0.55, transSec: 0.55 },
+                { key: 'smile',      label: 'Wide Smile',    holdSec: 0.90, transSec: 0.55 },
+                { key: 'wink_left',  label: 'Left Wink',     holdSec: 0.70, transSec: 0.45 },
+                { key: 'wink_right', label: 'Right Wink',    holdSec: 0.70, transSec: 0.50 },
+                { key: 'open_mouth', label: 'Open Mouth',    holdSec: 0.85, transSec: 0.55 },
+                { key: 'surprise',   label: 'Surprise',      holdSec: 0.80, transSec: 0.55 },
+                { key: 'pucker',     label: 'Lip Pucker',    holdSec: 0.75, transSec: 0.50 },
+                { key: 'blow',       label: 'Puffed Cheeks', holdSec: 0.80, transSec: 0.50 },
+                { key: 'tongue',     label: 'Tongue Out',    holdSec: 0.85, transSec: 0.60 }
+            ];
 
             function b64ToBytes(b64) {
                 const bin = atob(b64);
@@ -331,53 +367,98 @@
                 const numTris = payload.numTris;
                 const targetCenter = payload.targetCenter;
 
-                const curVerts3D = new Float32Array(b64ToBytes(payload.vCfg4F32).buffer);
+                const baseVerts3D = new Float32Array(b64ToBytes(payload.vCfg4F32).buffer);
                 const facesUV = new Uint16Array(b64ToBytes(payload.facesUVU16).buffer);
                 const mapUVTo3D = new Uint16Array(b64ToBytes(payload.mapUVTo3DU16).buffer);
                 const uvCoords = new Float32Array(b64ToBytes(payload.uvCoordsF32).buffer);
                 const uvIsSkin = b64ToBytes(payload.uvIsSkinU8);
                 const vc3DU8 = b64ToBytes(payload.vc3DU8);
+                const rawExpressions = payload.expressions || {};
 
-                const curNorms3D = new Float32Array(num3D * 3);
+                const tri3DIndices = new Uint32Array(numTris * 3);
                 for (let t = 0; t < numTris; t++) {
-                    const i0 = mapUVTo3D[facesUV[t * 3]] * 3;
-                    const i1 = mapUVTo3D[facesUV[t * 3 + 1]] * 3;
-                    const i2 = mapUVTo3D[facesUV[t * 3 + 2]] * 3;
-                    const ax = curVerts3D[i1] - curVerts3D[i0];
-                    const ay = curVerts3D[i1 + 1] - curVerts3D[i0 + 1];
-                    const az = curVerts3D[i1 + 2] - curVerts3D[i0 + 2];
-                    const bx = curVerts3D[i2] - curVerts3D[i0];
-                    const by = curVerts3D[i2 + 1] - curVerts3D[i0 + 1];
-                    const bz = curVerts3D[i2 + 2] - curVerts3D[i0 + 2];
-                    const nx = ay * bz - az * by;
-                    const ny = az * bx - ax * bz;
-                    const nz = ax * by - ay * bx;
-                    curNorms3D[i0] += nx; curNorms3D[i0 + 1] += ny; curNorms3D[i0 + 2] += nz;
-                    curNorms3D[i1] += nx; curNorms3D[i1 + 1] += ny; curNorms3D[i1 + 2] += nz;
-                    curNorms3D[i2] += nx; curNorms3D[i2 + 1] += ny; curNorms3D[i2 + 2] += nz;
-                }
-                for (let i = 0; i < num3D; i++) {
-                    const idx = i * 3;
-                    const l = Math.hypot(curNorms3D[idx], curNorms3D[idx + 1], curNorms3D[idx + 2]) || 1e-8;
-                    curNorms3D[idx] /= l;
-                    curNorms3D[idx + 1] /= l;
-                    curNorms3D[idx + 2] /= l;
+                    tri3DIndices[t * 3] = mapUVTo3D[facesUV[t * 3]] * 3;
+                    tri3DIndices[t * 3 + 1] = mapUVTo3D[facesUV[t * 3 + 1]] * 3;
+                    tri3DIndices[t * 3 + 2] = mapUVTo3D[facesUV[t * 3 + 2]] * 3;
                 }
 
-                const uvPositions = new Float32Array(numUV * 3);
-                const uvNormals = new Float32Array(numUV * 3);
+                const scratchNorms3D = new Float32Array(num3D * 3);
+                const exprGpuCache = {};
+
+                function buildExprGpuBuffers(key) {
+                    if (exprGpuCache[key]) return exprGpuCache[key];
+
+                    const verts3D = new Float32Array(num3D * 3);
+                    if (key === 'neutral' || !rawExpressions[key]) {
+                        verts3D.set(baseVerts3D);
+                    } else {
+                        const exprInfo = rawExpressions[key];
+                        const scale = exprInfo.maxAbs / 127.0;
+                        const qBytes = b64ToBytes(exprInfo.deltaI8);
+                        const qI8 = new Int8Array(qBytes.buffer, qBytes.byteOffset, qBytes.byteLength);
+                        for (let i = 0; i < num3D * 3; i++) {
+                            verts3D[i] = baseVerts3D[i] + qI8[i] * scale;
+                        }
+                    }
+
+                    scratchNorms3D.fill(0);
+                    for (let t = 0; t < numTris; t++) {
+                        const i0 = tri3DIndices[t * 3];
+                        const i1 = tri3DIndices[t * 3 + 1];
+                        const i2 = tri3DIndices[t * 3 + 2];
+                        const ax = verts3D[i1] - verts3D[i0];
+                        const ay = verts3D[i1 + 1] - verts3D[i0 + 1];
+                        const az = verts3D[i1 + 2] - verts3D[i0 + 2];
+                        const bx = verts3D[i2] - verts3D[i0];
+                        const by = verts3D[i2 + 1] - verts3D[i0 + 1];
+                        const bz = verts3D[i2 + 2] - verts3D[i0 + 2];
+                        const nx = ay * bz - az * by;
+                        const ny = az * bx - ax * bz;
+                        const nz = ax * by - ay * bx;
+                        scratchNorms3D[i0] += nx; scratchNorms3D[i0 + 1] += ny; scratchNorms3D[i0 + 2] += nz;
+                        scratchNorms3D[i1] += nx; scratchNorms3D[i1 + 1] += ny; scratchNorms3D[i1 + 2] += nz;
+                        scratchNorms3D[i2] += nx; scratchNorms3D[i2 + 1] += ny; scratchNorms3D[i2 + 2] += nz;
+                    }
+                    for (let i = 0; i < num3D; i++) {
+                        const idx = i * 3;
+                        const l = Math.hypot(scratchNorms3D[idx], scratchNorms3D[idx + 1], scratchNorms3D[idx + 2]) || 1e-8;
+                        scratchNorms3D[idx] /= l;
+                        scratchNorms3D[idx + 1] /= l;
+                        scratchNorms3D[idx + 2] /= l;
+                    }
+
+                    const uvPos = new Float32Array(numUV * 3);
+                    const uvNorm = new Float32Array(numUV * 3);
+                    for (let k = 0; k < numUV; k++) {
+                        const v3 = mapUVTo3D[k] * 3;
+                        const u3 = k * 3;
+                        uvPos[u3] = verts3D[v3];
+                        uvPos[u3 + 1] = verts3D[v3 + 1];
+                        uvPos[u3 + 2] = verts3D[v3 + 2];
+                        uvNorm[u3] = scratchNorms3D[v3];
+                        uvNorm[u3 + 1] = scratchNorms3D[v3 + 1];
+                        uvNorm[u3 + 2] = scratchNorms3D[v3 + 2];
+                    }
+
+                    const bPos = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bPos);
+                    gl.bufferData(gl.ARRAY_BUFFER, uvPos, gl.STATIC_DRAW);
+
+                    const bNorm = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bNorm);
+                    gl.bufferData(gl.ARRAY_BUFFER, uvNorm, gl.STATIC_DRAW);
+
+                    exprGpuCache[key] = { pos: bPos, norm: bNorm, verts3D };
+                    return exprGpuCache[key];
+                }
+
+                buildExprGpuBuffers('neutral');
+
                 const uvColors = new Float32Array(numUV * 3);
                 const uvSkinFlag = new Float32Array(numUV);
-
                 for (let k = 0; k < numUV; k++) {
                     const v3 = mapUVTo3D[k] * 3;
                     const u3 = k * 3;
-                    uvPositions[u3] = curVerts3D[v3];
-                    uvPositions[u3 + 1] = curVerts3D[v3 + 1];
-                    uvPositions[u3 + 2] = curVerts3D[v3 + 2];
-                    uvNormals[u3] = curNorms3D[v3];
-                    uvNormals[u3 + 1] = curNorms3D[v3 + 1];
-                    uvNormals[u3 + 2] = curNorms3D[v3 + 2];
                     uvColors[u3] = vc3DU8[v3] / 255.0;
                     uvColors[u3 + 1] = vc3DU8[v3 + 1] / 255.0;
                     uvColors[u3 + 2] = vc3DU8[v3 + 2] / 255.0;
@@ -397,7 +478,9 @@
 
                 const vsSource = `
                     attribute vec3 aPosition;
+                    attribute vec3 aPositionNext;
                     attribute vec3 aNormal;
+                    attribute vec3 aNormalNext;
                     attribute vec2 aUV;
                     attribute vec3 aColor;
                     attribute float aIsSkin;
@@ -405,6 +488,7 @@
                     uniform mat4 uView;
                     uniform mat4 uProj;
                     uniform float uDepthBias;
+                    uniform float uExprBlend;
 
                     varying vec3 vPosCam;
                     varying vec3 vNormCam;
@@ -414,11 +498,13 @@
                     varying float vIsSkin;
 
                     void main() {
-                        vec4 posCam = uView * vec4(aPosition, 1.0);
+                        vec3 blendedPos = mix(aPosition, aPositionNext, uExprBlend);
+                        vec3 blendedNorm = normalize(mix(aNormal, aNormalNext, uExprBlend));
+                        vec4 posCam = uView * vec4(blendedPos, 1.0);
                         posCam.z += uDepthBias;
                         vPosCam = posCam.xyz;
-                        vNormCam = mat3(uView) * aNormal;
-                        vNormWorld = aNormal;
+                        vNormCam = mat3(uView) * blendedNorm;
+                        vNormWorld = blendedNorm;
                         vUV = aUV;
                         vColor = aColor;
                         vIsSkin = aIsSkin;
@@ -506,26 +592,21 @@
 
                 const loc = {
                     aPosition: gl.getAttribLocation(prog, 'aPosition'),
+                    aPositionNext: gl.getAttribLocation(prog, 'aPositionNext'),
                     aNormal: gl.getAttribLocation(prog, 'aNormal'),
+                    aNormalNext: gl.getAttribLocation(prog, 'aNormalNext'),
                     aUV: gl.getAttribLocation(prog, 'aUV'),
                     aColor: gl.getAttribLocation(prog, 'aColor'),
                     aIsSkin: gl.getAttribLocation(prog, 'aIsSkin'),
                     uView: gl.getUniformLocation(prog, 'uView'),
                     uProj: gl.getUniformLocation(prog, 'uProj'),
                     uDepthBias: gl.getUniformLocation(prog, 'uDepthBias'),
+                    uExprBlend: gl.getUniformLocation(prog, 'uExprBlend'),
                     uEdgeflowTex: gl.getUniformLocation(prog, 'uEdgeflowTex'),
                     uShowEdgeflow: gl.getUniformLocation(prog, 'uShowEdgeflow'),
                     uShowNormals: gl.getUniformLocation(prog, 'uShowNormals'),
                     uIsWirePass: gl.getUniformLocation(prog, 'uIsWirePass')
                 };
-
-                const bufPos = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
-                gl.bufferData(gl.ARRAY_BUFFER, uvPositions, gl.STATIC_DRAW);
-
-                const bufNorm = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
-                gl.bufferData(gl.ARRAY_BUFFER, uvNormals, gl.STATIC_DRAW);
 
                 const bufUV = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
@@ -570,6 +651,37 @@
                     }
                 };
                 efImg.src = 'data:image/png;base64,' + payload.edgeflowPngB64;
+
+                const totalCycleSec = EXPR_SEQUENCE.reduce((acc, s) => acc + s.holdSec + s.transSec, 0);
+                let exprStartTime = performance.now();
+
+                function getActiveExpressionState(now) {
+                    if (!state.playExpressions) {
+                        const b = buildExprGpuBuffers(state.selectedExpr);
+                        return { buf0: b, buf1: b, blend: 0.0, activeKey: state.selectedExpr };
+                    }
+                    let t = ((now - exprStartTime) * 0.001) % totalCycleSec;
+                    for (let i = 0; i < EXPR_SEQUENCE.length; i++) {
+                        const cur = EXPR_SEQUENCE[i];
+                        const next = EXPR_SEQUENCE[(i + 1) % EXPR_SEQUENCE.length];
+                        const segDur = cur.holdSec + cur.transSec;
+                        if (t <= segDur) {
+                            const buf0 = buildExprGpuBuffers(cur.key);
+                            const buf1 = buildExprGpuBuffers(next.key);
+                            let blend = 0.0;
+                            let activeKey = cur.key;
+                            if (t > cur.holdSec) {
+                                const u = (t - cur.holdSec) / cur.transSec;
+                                blend = 0.5 - 0.5 * Math.cos(Math.PI * u);
+                                if (blend > 0.5) activeKey = next.key;
+                            }
+                            return { buf0, buf1, blend, activeKey };
+                        }
+                        t -= segDur;
+                    }
+                    const b = buildExprGpuBuffers('neutral');
+                    return { buf0: b, buf1: b, blend: 0.0, activeKey: 'neutral' };
+                }
 
                 function computeViewAndProj(aspect) {
                     const yaw = (state.yawDeg * Math.PI) / 180.0;
@@ -617,6 +729,8 @@
                 }
 
                 const startTime = performance.now();
+                let lastHighlightedKey = 'neutral';
+
                 function renderFrame(now) {
                     const dt = (now - startTime) * 0.001;
                     if (state.animMode === 'gnm_spin') {
@@ -624,6 +738,14 @@
                         state.pitchDeg = Math.cos(dt * 1.6) * 5.0;
                     } else if (state.animMode === 'turntable') {
                         state.yawDeg = ((dt * 28.0 + 180.0) % 360.0) - 180.0;
+                    }
+
+                    const exprState = getActiveExpressionState(now);
+                    if (exprState.activeKey !== lastHighlightedKey) {
+                        lastHighlightedKey = exprState.activeKey;
+                        document.querySelectorAll('[data-expr]').forEach(btn => {
+                            btn.classList.toggle('is-active', btn.dataset.expr === exprState.activeKey);
+                        });
                     }
 
                     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -648,6 +770,7 @@
                     gl.uniformMatrix4fv(loc.uView, false, view);
                     gl.uniformMatrix4fv(loc.uProj, false, proj);
                     gl.uniform1f(loc.uDepthBias, 0.0);
+                    gl.uniform1f(loc.uExprBlend, exprState.blend);
                     gl.uniform1f(loc.uShowEdgeflow, state.showEdgeflow ? 1.0 : 0.0);
                     gl.uniform1i(loc.uShowNormals, state.showNormals ? 1 : 0);
                     gl.uniform1i(loc.uIsWirePass, 0);
@@ -656,13 +779,21 @@
                     gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
                     gl.uniform1i(loc.uEdgeflowTex, 0);
 
-                    gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf0.pos);
                     gl.enableVertexAttribArray(loc.aPosition);
                     gl.vertexAttribPointer(loc.aPosition, 3, gl.FLOAT, false, 0, 0);
 
-                    gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf1.pos);
+                    gl.enableVertexAttribArray(loc.aPositionNext);
+                    gl.vertexAttribPointer(loc.aPositionNext, 3, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf0.norm);
                     gl.enableVertexAttribArray(loc.aNormal);
                     gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf1.norm);
+                    gl.enableVertexAttribArray(loc.aNormalNext);
+                    gl.vertexAttribPointer(loc.aNormalNext, 3, gl.FLOAT, false, 0, 0);
 
                     gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
                     gl.enableVertexAttribArray(loc.aUV);
@@ -697,6 +828,15 @@
 
                 // Controls & Interactions
                 function syncUI() {
+                    const playBtn = document.getElementById('btnPlayExpr');
+                    playBtn.classList.toggle('is-active', state.playExpressions);
+                    playBtn.innerHTML = state.playExpressions ? '&#9208; Pause Sequence' : '&#9654; Play Sequence';
+
+                    if (!state.playExpressions) {
+                        document.querySelectorAll('[data-expr]').forEach(btn => {
+                            btn.classList.toggle('is-active', btn.dataset.expr === state.selectedExpr);
+                        });
+                    }
                     document.querySelectorAll('[data-anim]').forEach(btn => {
                         btn.classList.toggle('is-active', btn.dataset.anim === state.animMode);
                     });
@@ -704,6 +844,22 @@
                     document.getElementById('btnWireframe').classList.toggle('is-active', state.showWireframe);
                     document.getElementById('btnNormals').classList.toggle('is-active', state.showNormals);
                 }
+
+                document.getElementById('btnPlayExpr').addEventListener('click', () => {
+                    state.playExpressions = !state.playExpressions;
+                    if (state.playExpressions) {
+                        exprStartTime = performance.now();
+                    }
+                    syncUI();
+                });
+
+                document.querySelectorAll('[data-expr]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        state.playExpressions = false;
+                        state.selectedExpr = btn.dataset.expr;
+                        syncUI();
+                    });
+                });
 
                 document.querySelectorAll('[data-anim]').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -731,9 +887,7 @@
                     frontal:  { yaw: 0.0,   pitch: 0.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
                     right26:  { yaw: 26.0,  pitch: 5.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
                     left26:   { yaw: -26.0, pitch: 6.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
-                    uptilt24: { yaw: -3.5,  pitch: 24.0, dist: 0.86, panX: 0.0, panY: -0.006 },
-                    profileL: { yaw: -75.0, pitch: 0.0,  dist: 0.90, panX: 0.0, panY: -0.006 },
-                    profileR: { yaw: 75.0,  pitch: 0.0,  dist: 0.90, panX: 0.0, panY: -0.006 }
+                    uptilt24: { yaw: -3.5,  pitch: 24.0, dist: 0.86, panX: 0.0, panY: -0.006 }
                 };
 
                 document.querySelectorAll('[data-cam]').forEach(btn => {
@@ -794,12 +948,14 @@
                     state.distance = Math.max(0.45, Math.min(2.2, state.distance * factor));
                 }, { passive: false });
 
-                // Export .OBJ
+                // Export .OBJ (exports currently active expression!)
                 document.getElementById('btnExportObj').addEventListener('click', () => {
-                    const lines = ['# Google GNM Head v3.0 — Sergio Orts Escolano (Config 4 Fit)'];
+                    const activeBuf = buildExprGpuBuffers(lastHighlightedKey || 'neutral');
+                    const vArr = activeBuf.verts3D || baseVerts3D;
+                    const lines = [`# Google GNM Head v3.0 — Sergio Orts Escolano (${lastHighlightedKey})`];
                     for (let i = 0; i < num3D; i++) {
                         const idx = i * 3;
-                        lines.push(`v ${curVerts3D[idx].toFixed(6)} ${curVerts3D[idx+1].toFixed(6)} ${curVerts3D[idx+2].toFixed(6)}`);
+                        lines.push(`v ${vArr[idx].toFixed(6)} ${vArr[idx+1].toFixed(6)} ${vArr[idx+2].toFixed(6)}`);
                     }
                     for (let t = 0; t < numTris; t++) {
                         const a = mapUVTo3D[facesUV[t * 3]] + 1;
@@ -811,7 +967,7 @@
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'sergio_gnm_head_v3.obj';
+                    a.download = `sergio_gnm_head_${lastHighlightedKey}.obj`;
                     a.click();
                     URL.revokeObjectURL(url);
                 });

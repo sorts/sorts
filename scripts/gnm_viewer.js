@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const state = {
         animMode: 'gnm_spin',
+        playExpressions: false,
         showEdgeflow: true,
         showWireframe: false,
         yawDeg: 0.0,
@@ -18,18 +19,32 @@ document.addEventListener('DOMContentLoaded', () => {
         panY: -0.006
     };
 
+    const EXPR_SEQUENCE = [
+        { key: 'neutral',    label: 'Neutral',       holdSec: 0.55, transSec: 0.55 },
+        { key: 'smile',      label: 'Wide Smile',    holdSec: 0.90, transSec: 0.55 },
+        { key: 'wink_left',  label: 'Left Wink',     holdSec: 0.70, transSec: 0.45 },
+        { key: 'wink_right', label: 'Right Wink',    holdSec: 0.70, transSec: 0.50 },
+        { key: 'open_mouth', label: 'Open Mouth',    holdSec: 0.85, transSec: 0.55 },
+        { key: 'surprise',   label: 'Surprise',      holdSec: 0.80, transSec: 0.55 },
+        { key: 'pucker',     label: 'Lip Pucker',    holdSec: 0.75, transSec: 0.50 },
+        { key: 'blow',       label: 'Puffed Cheeks', holdSec: 0.80, transSec: 0.50 },
+        { key: 'tongue',     label: 'Tongue Out',    holdSec: 0.85, transSec: 0.60 }
+    ];
+
     let gl = null;
     let canvasEl = null;
     let rafId = null;
     let isMeshLoaded = false;
     let isLoadingMesh = false;
     let startTime = performance.now();
+    let exprStartTime = performance.now();
     let renderOnceFn = null;
 
     function buildUI() {
         const isInlineMode = typeof window !== 'undefined' && window.innerWidth < 1400;
-        containerEl.classList.toggle('is-inline-mode', isInlineMode);
-        containerEl.classList.toggle('is-compact', isCompact);
+        containerEl.classList.toggle('is-inline-mode', isInlineMode && !isFullSize);
+        containerEl.classList.toggle('is-compact', isCompact && !isFullSize);
+        containerEl.classList.toggle('is-fullsize', isFullSize);
 
         if (!containerEl.querySelector('.gnm-viewer-header')) {
             containerEl.innerHTML = `
@@ -49,9 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <canvas id="gnm-webgl-canvas" class="gnm-webgl-canvas"></canvas>
                         <div class="gnm-loading-overlay" id="gnm-loading-overlay">Loading 3D GNM mesh&hellip;</div>
                         <a href="https://github.com/google/GNM" target="_blank" rel="noopener noreferrer" class="gnm-viewport-badge" title="Google Neural Model (GNM) Head v3.0 on GitHub">GNM Head v3.0 &#8599;</a>
+                        <span class="gnm-expr-badge" id="gnm-expr-badge" style="display:none;"></span>
                         <span class="gnm-orbit-hint">Drag to orbit</span>
                     </div>
                     <div class="gnm-viewer-footer">
+                        <button type="button" class="gnm-ctrl-chip gnm-expr-play-btn" id="gnm-btn-expr" title="Play facial expressions animation (smile, open mouth, winks, surprise)">&#9654; Expressions</button>
                         <button type="button" class="gnm-ctrl-chip is-active" id="gnm-btn-spin" title="Toggle GNM Spin oscillation">GNM Spin</button>
                         <button type="button" class="gnm-ctrl-chip is-active" id="gnm-btn-edgeflow" title="Toggle UDIM 1001 Edge-Flow texture">Edge-Flow</button>
                         <button type="button" class="gnm-ctrl-chip" id="gnm-btn-wire" title="Toggle 3D wireframe overlay">Wire</button>
@@ -112,9 +129,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            const btnExpr = document.getElementById('gnm-btn-expr');
             const btnSpin = document.getElementById('gnm-btn-spin');
             const btnEdge = document.getElementById('gnm-btn-edgeflow');
             const btnWire = document.getElementById('gnm-btn-wire');
+
+            if (btnExpr) {
+                btnExpr.addEventListener('click', () => {
+                    state.playExpressions = !state.playExpressions;
+                    if (state.playExpressions) {
+                        exprStartTime = performance.now();
+                    }
+                    syncControlButtons();
+                });
+            }
 
             if (btnSpin) {
                 btnSpin.addEventListener('click', () => {
@@ -149,9 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function syncControlButtons() {
+        const btnExpr = document.getElementById('gnm-btn-expr');
         const btnSpin = document.getElementById('gnm-btn-spin');
         const btnEdge = document.getElementById('gnm-btn-edgeflow');
         const btnWire = document.getElementById('gnm-btn-wire');
+        const exprBadge = document.getElementById('gnm-expr-badge');
+
+        if (btnExpr) {
+            btnExpr.classList.toggle('is-active', state.playExpressions);
+            btnExpr.innerHTML = state.playExpressions ? '&#9208; Expressions' : '&#9654; Expressions';
+        }
+        if (exprBadge && !state.playExpressions) {
+            exprBadge.style.display = 'none';
+        }
         if (btnSpin) btnSpin.classList.toggle('is-active', state.animMode === 'gnm_spin');
         if (btnEdge) btnEdge.classList.toggle('is-active', state.showEdgeflow);
         if (btnWire) btnWire.classList.toggle('is-active', state.showWireframe);
@@ -180,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (!isCompact) {
+        if (!isCompact || isFullSize) {
             if (!isMeshLoaded && !isLoadingMesh) {
                 initWebGLViewer();
             } else if (isMeshLoaded && !rafId && renderOnceFn) {
@@ -233,54 +271,100 @@ document.addEventListener('DOMContentLoaded', () => {
             const numTris = payload.numTris;
             const targetCenter = payload.targetCenter;
 
-            const curVerts3D = new Float32Array(b64ToBytes(payload.vCfg4F32).buffer);
+            const baseVerts3D = new Float32Array(b64ToBytes(payload.vCfg4F32).buffer);
             const facesUV = new Uint16Array(b64ToBytes(payload.facesUVU16).buffer);
             const mapUVTo3D = new Uint16Array(b64ToBytes(payload.mapUVTo3DU16).buffer);
             const uvCoords = new Float32Array(b64ToBytes(payload.uvCoordsF32).buffer);
             const uvIsSkin = b64ToBytes(payload.uvIsSkinU8);
             const vc3DU8 = b64ToBytes(payload.vc3DU8);
+            const rawExpressions = payload.expressions || {};
 
-            // Compute area-weighted smooth 3D vertex normals
-            const curNorms3D = new Float32Array(num3D * 3);
+            // Precompute triangle 3D index triples for fast normal calculation
+            const tri3DIndices = new Uint32Array(numTris * 3);
             for (let t = 0; t < numTris; t++) {
-                const i0 = mapUVTo3D[facesUV[t * 3]] * 3;
-                const i1 = mapUVTo3D[facesUV[t * 3 + 1]] * 3;
-                const i2 = mapUVTo3D[facesUV[t * 3 + 2]] * 3;
-                const ax = curVerts3D[i1] - curVerts3D[i0];
-                const ay = curVerts3D[i1 + 1] - curVerts3D[i0 + 1];
-                const az = curVerts3D[i1 + 2] - curVerts3D[i0 + 2];
-                const bx = curVerts3D[i2] - curVerts3D[i0];
-                const by = curVerts3D[i2 + 1] - curVerts3D[i0 + 1];
-                const bz = curVerts3D[i2 + 2] - curVerts3D[i0 + 2];
-                const nx = ay * bz - az * by;
-                const ny = az * bx - ax * bz;
-                const nz = ax * by - ay * bx;
-                curNorms3D[i0] += nx; curNorms3D[i0 + 1] += ny; curNorms3D[i0 + 2] += nz;
-                curNorms3D[i1] += nx; curNorms3D[i1 + 1] += ny; curNorms3D[i1 + 2] += nz;
-                curNorms3D[i2] += nx; curNorms3D[i2 + 1] += ny; curNorms3D[i2 + 2] += nz;
-            }
-            for (let i = 0; i < num3D; i++) {
-                const idx = i * 3;
-                const l = Math.hypot(curNorms3D[idx], curNorms3D[idx + 1], curNorms3D[idx + 2]) || 1e-8;
-                curNorms3D[idx] /= l;
-                curNorms3D[idx + 1] /= l;
-                curNorms3D[idx + 2] /= l;
+                tri3DIndices[t * 3] = mapUVTo3D[facesUV[t * 3]] * 3;
+                tri3DIndices[t * 3 + 1] = mapUVTo3D[facesUV[t * 3 + 1]] * 3;
+                tri3DIndices[t * 3 + 2] = mapUVTo3D[facesUV[t * 3 + 2]] * 3;
             }
 
-            const uvPositions = new Float32Array(numUV * 3);
-            const uvNormals = new Float32Array(numUV * 3);
+            const scratchNorms3D = new Float32Array(num3D * 3);
+            const exprGpuCache = {};
+
+            function buildExprGpuBuffers(key) {
+                if (exprGpuCache[key]) return exprGpuCache[key];
+
+                const verts3D = new Float32Array(num3D * 3);
+                if (key === 'neutral' || !rawExpressions[key]) {
+                    verts3D.set(baseVerts3D);
+                } else {
+                    const exprInfo = rawExpressions[key];
+                    const scale = exprInfo.maxAbs / 127.0;
+                    const qBytes = b64ToBytes(exprInfo.deltaI8);
+                    const qI8 = new Int8Array(qBytes.buffer, qBytes.byteOffset, qBytes.byteLength);
+                    for (let i = 0; i < num3D * 3; i++) {
+                        verts3D[i] = baseVerts3D[i] + qI8[i] * scale;
+                    }
+                }
+
+                scratchNorms3D.fill(0);
+                for (let t = 0; t < numTris; t++) {
+                    const i0 = tri3DIndices[t * 3];
+                    const i1 = tri3DIndices[t * 3 + 1];
+                    const i2 = tri3DIndices[t * 3 + 2];
+                    const ax = verts3D[i1] - verts3D[i0];
+                    const ay = verts3D[i1 + 1] - verts3D[i0 + 1];
+                    const az = verts3D[i1 + 2] - verts3D[i0 + 2];
+                    const bx = verts3D[i2] - verts3D[i0];
+                    const by = verts3D[i2 + 1] - verts3D[i0 + 1];
+                    const bz = verts3D[i2 + 2] - verts3D[i0 + 2];
+                    const nx = ay * bz - az * by;
+                    const ny = az * bx - ax * bz;
+                    const nz = ax * by - ay * bx;
+                    scratchNorms3D[i0] += nx; scratchNorms3D[i0 + 1] += ny; scratchNorms3D[i0 + 2] += nz;
+                    scratchNorms3D[i1] += nx; scratchNorms3D[i1 + 1] += ny; scratchNorms3D[i1 + 2] += nz;
+                    scratchNorms3D[i2] += nx; scratchNorms3D[i2 + 1] += ny; scratchNorms3D[i2 + 2] += nz;
+                }
+                for (let i = 0; i < num3D; i++) {
+                    const idx = i * 3;
+                    const l = Math.hypot(scratchNorms3D[idx], scratchNorms3D[idx + 1], scratchNorms3D[idx + 2]) || 1e-8;
+                    scratchNorms3D[idx] /= l;
+                    scratchNorms3D[idx + 1] /= l;
+                    scratchNorms3D[idx + 2] /= l;
+                }
+
+                const uvPos = new Float32Array(numUV * 3);
+                const uvNorm = new Float32Array(numUV * 3);
+                for (let k = 0; k < numUV; k++) {
+                    const v3 = mapUVTo3D[k] * 3;
+                    const u3 = k * 3;
+                    uvPos[u3] = verts3D[v3];
+                    uvPos[u3 + 1] = verts3D[v3 + 1];
+                    uvPos[u3 + 2] = verts3D[v3 + 2];
+                    uvNorm[u3] = scratchNorms3D[v3];
+                    uvNorm[u3 + 1] = scratchNorms3D[v3 + 1];
+                    uvNorm[u3 + 2] = scratchNorms3D[v3 + 2];
+                }
+
+                const bPos = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bPos);
+                gl.bufferData(gl.ARRAY_BUFFER, uvPos, gl.STATIC_DRAW);
+
+                const bNorm = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bNorm);
+                gl.bufferData(gl.ARRAY_BUFFER, uvNorm, gl.STATIC_DRAW);
+
+                exprGpuCache[key] = { pos: bPos, norm: bNorm };
+                return exprGpuCache[key];
+            }
+
+            // Build neutral state immediately
+            buildExprGpuBuffers('neutral');
+
             const uvColors = new Float32Array(numUV * 3);
             const uvSkinFlag = new Float32Array(numUV);
-
             for (let k = 0; k < numUV; k++) {
                 const v3 = mapUVTo3D[k] * 3;
                 const u3 = k * 3;
-                uvPositions[u3] = curVerts3D[v3];
-                uvPositions[u3 + 1] = curVerts3D[v3 + 1];
-                uvPositions[u3 + 2] = curVerts3D[v3 + 2];
-                uvNormals[u3] = curNorms3D[v3];
-                uvNormals[u3 + 1] = curNorms3D[v3 + 1];
-                uvNormals[u3 + 2] = curNorms3D[v3 + 2];
                 uvColors[u3] = vc3DU8[v3] / 255.0;
                 uvColors[u3 + 1] = vc3DU8[v3 + 1] / 255.0;
                 uvColors[u3 + 2] = vc3DU8[v3 + 2] / 255.0;
@@ -300,7 +384,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const vsSource = `
                 attribute vec3 aPosition;
+                attribute vec3 aPositionNext;
                 attribute vec3 aNormal;
+                attribute vec3 aNormalNext;
                 attribute vec2 aUV;
                 attribute vec3 aColor;
                 attribute float aIsSkin;
@@ -308,6 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 uniform mat4 uView;
                 uniform mat4 uProj;
                 uniform float uDepthBias;
+                uniform float uExprBlend;
 
                 varying vec3 vPosCam;
                 varying vec3 vNormCam;
@@ -316,10 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 varying float vIsSkin;
 
                 void main() {
-                    vec4 posCam = uView * vec4(aPosition, 1.0);
+                    vec3 blendedPos = mix(aPosition, aPositionNext, uExprBlend);
+                    vec3 blendedNorm = normalize(mix(aNormal, aNormalNext, uExprBlend));
+                    vec4 posCam = uView * vec4(blendedPos, 1.0);
                     posCam.z += uDepthBias;
                     vPosCam = posCam.xyz;
-                    vNormCam = mat3(uView) * aNormal;
+                    vNormCam = mat3(uView) * blendedNorm;
                     vUV = aUV;
                     vColor = aColor;
                     vIsSkin = aIsSkin;
@@ -406,26 +495,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const loc = {
                 aPosition: gl.getAttribLocation(prog, 'aPosition'),
+                aPositionNext: gl.getAttribLocation(prog, 'aPositionNext'),
                 aNormal: gl.getAttribLocation(prog, 'aNormal'),
+                aNormalNext: gl.getAttribLocation(prog, 'aNormalNext'),
                 aUV: gl.getAttribLocation(prog, 'aUV'),
                 aColor: gl.getAttribLocation(prog, 'aColor'),
                 aIsSkin: gl.getAttribLocation(prog, 'aIsSkin'),
                 uView: gl.getUniformLocation(prog, 'uView'),
                 uProj: gl.getUniformLocation(prog, 'uProj'),
                 uDepthBias: gl.getUniformLocation(prog, 'uDepthBias'),
+                uExprBlend: gl.getUniformLocation(prog, 'uExprBlend'),
                 uEdgeflowTex: gl.getUniformLocation(prog, 'uEdgeflowTex'),
                 uShowEdgeflow: gl.getUniformLocation(prog, 'uShowEdgeflow'),
                 uIsWirePass: gl.getUniformLocation(prog, 'uIsWirePass'),
                 uIsRetro8Bit: gl.getUniformLocation(prog, 'uIsRetro8Bit')
             };
-
-            const bufPos = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
-            gl.bufferData(gl.ARRAY_BUFFER, uvPositions, gl.STATIC_DRAW);
-
-            const bufNorm = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
-            gl.bufferData(gl.ARRAY_BUFFER, uvNormals, gl.STATIC_DRAW);
 
             const bufUV = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
@@ -470,6 +554,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
             efImg.src = 'data:image/png;base64,' + payload.edgeflowPngB64;
+
+            // Compute total cycle duration for expression sequence
+            const totalCycleSec = EXPR_SEQUENCE.reduce((acc, s) => acc + s.holdSec + s.transSec, 0);
+
+            function getActiveExpressionState(now) {
+                if (!state.playExpressions) {
+                    const neut = buildExprGpuBuffers('neutral');
+                    return { buf0: neut, buf1: neut, blend: 0.0, label: null };
+                }
+                let t = ((now - exprStartTime) * 0.001) % totalCycleSec;
+                for (let i = 0; i < EXPR_SEQUENCE.length; i++) {
+                    const cur = EXPR_SEQUENCE[i];
+                    const next = EXPR_SEQUENCE[(i + 1) % EXPR_SEQUENCE.length];
+                    const segDur = cur.holdSec + cur.transSec;
+                    if (t <= segDur) {
+                        const buf0 = buildExprGpuBuffers(cur.key);
+                        const buf1 = buildExprGpuBuffers(next.key);
+                        let blend = 0.0;
+                        let activeLabel = cur.label;
+                        if (t > cur.holdSec) {
+                            const u = (t - cur.holdSec) / cur.transSec;
+                            blend = 0.5 - 0.5 * Math.cos(Math.PI * u);
+                            if (blend > 0.5) activeLabel = next.label;
+                        }
+                        return { buf0, buf1, blend, label: activeLabel };
+                    }
+                    t -= segDur;
+                }
+                const neut = buildExprGpuBuffers('neutral');
+                return { buf0: neut, buf1: neut, blend: 0.0, label: 'Neutral' };
+            }
 
             function computeViewAndProj(aspect) {
                 const yaw = (state.yawDeg * Math.PI) / 180.0;
@@ -516,8 +631,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { view, proj };
             }
 
+            const exprBadgeEl = document.getElementById('gnm-expr-badge');
+
             renderOnceFn = function renderFrame(now) {
-                if (isCompact) {
+                if (isCompact && !isFullSize) {
                     rafId = null;
                     return;
                 }
@@ -525,6 +642,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (state.animMode === 'gnm_spin') {
                     state.yawDeg = Math.sin(dt * 1.6) * 22.0;
                     state.pitchDeg = Math.cos(dt * 1.6) * 5.0;
+                }
+
+                const exprState = getActiveExpressionState(now);
+                if (exprBadgeEl) {
+                    if (exprState.label) {
+                        exprBadgeEl.style.display = '';
+                        exprBadgeEl.textContent = exprState.label;
+                    } else {
+                        exprBadgeEl.style.display = 'none';
+                    }
                 }
 
                 const isRetro8Bit = document.documentElement.getAttribute('data-retro') === '8bit';
@@ -554,6 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gl.uniformMatrix4fv(loc.uView, false, view);
                 gl.uniformMatrix4fv(loc.uProj, false, proj);
                 gl.uniform1f(loc.uDepthBias, 0.0);
+                gl.uniform1f(loc.uExprBlend, exprState.blend);
                 gl.uniform1f(loc.uShowEdgeflow, state.showEdgeflow ? 1.0 : 0.0);
                 gl.uniform1i(loc.uIsWirePass, 0);
                 gl.uniform1i(loc.uIsRetro8Bit, isRetro8Bit ? 1 : 0);
@@ -562,13 +690,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
                 gl.uniform1i(loc.uEdgeflowTex, 0);
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
+                gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf0.pos);
                 gl.enableVertexAttribArray(loc.aPosition);
                 gl.vertexAttribPointer(loc.aPosition, 3, gl.FLOAT, false, 0, 0);
 
-                gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
+                gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf1.pos);
+                gl.enableVertexAttribArray(loc.aPositionNext);
+                gl.vertexAttribPointer(loc.aPositionNext, 3, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf0.norm);
                 gl.enableVertexAttribArray(loc.aNormal);
                 gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, exprState.buf1.norm);
+                gl.enableVertexAttribArray(loc.aNormalNext);
+                gl.vertexAttribPointer(loc.aNormalNext, 3, gl.FLOAT, false, 0, 0);
 
                 gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
                 gl.enableVertexAttribArray(loc.aUV);
@@ -643,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 overlayEl.style.display = 'none';
             }
 
-            if (!isCompact) {
+            if (!isCompact || isFullSize) {
                 startTime = performance.now();
                 rafId = requestAnimationFrame(renderOnceFn);
             }
