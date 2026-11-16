@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D GNM Head v3.0 Viewer — Sergio Orts Escolano</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0b1017;
+            color: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .viewport-root {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 42%, #162234 0%, #0b1017 75%);
+        }
+        #glCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: grab;
+            touch-action: none;
+        }
+        #glCanvas:active {
+            cursor: grabbing;
+        }
+        .loading-banner {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #94a3b8;
+            background: rgba(11, 16, 23, 0.85);
+            z-index: 20;
+            pointer-events: none;
+        }
+        .top-bar {
+            position: absolute;
+            top: 1.15rem;
+            left: 1.25rem;
+            right: 1.25rem;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .hud-card {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.84);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            border-radius: 0.85rem;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45);
+        }
+        .hud-title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .live-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #329ced;
+            box-shadow: 0 0 0 3px rgba(50, 156, 237, 0.28);
+        }
+        .hud-eyebrow {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #7dd3fc;
+        }
+        .hud-main-title {
+            font-size: 0.96rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 0.2rem;
+        }
+        .hud-sub {
+            font-size: 0.76rem;
+            color: #94a3b8;
+            margin-top: 0.15rem;
+        }
+        .top-actions {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex-wrap: wrap;
+        }
+        .action-btn {
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.5rem 0.85rem;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.15s ease;
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.35);
+        }
+        .action-btn:hover {
+            border-color: #329ced;
+            background: rgba(50, 156, 237, 0.2);
+            color: #ffffff;
+        }
+        .action-btn.primary {
+            background: #329ced;
+            border-color: #329ced;
+            color: #ffffff;
+        }
+        .action-btn.primary:hover {
+            background: #2589d8;
+        }
+        .bottom-dock {
+            position: absolute;
+            bottom: 1.25rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.55rem;
+            width: max-content;
+            max-width: calc(100vw - 2rem);
+        }
+        .dock-row {
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 0.85rem;
+            padding: 0.45rem 0.65rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45);
+        }
+        .dock-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            padding: 0 0.35rem;
+        }
+        .dock-divider {
+            width: 1px;
+            height: 18px;
+            background: rgba(148, 163, 184, 0.25);
+            margin: 0 0.2rem;
+        }
+        .ctrl-btn {
+            background: rgba(30, 41, 59, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            color: #cbd5e1;
+            font-family: inherit;
+            font-size: 0.76rem;
+            font-weight: 600;
+            padding: 0.36rem 0.7rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .ctrl-btn:hover {
+            border-color: #329ced;
+            color: #ffffff;
+        }
+        .ctrl-btn.is-active {
+            background: rgba(50, 156, 237, 0.22);
+            border-color: #329ced;
+            color: #7dd3fc;
+        }
+        .hint-pill {
+            position: absolute;
+            bottom: 1.25rem;
+            left: 1.25rem;
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 0.55rem;
+            padding: 0.4rem 0.7rem;
+            font-size: 0.72rem;
+            color: #94a3b8;
+            pointer-events: none;
+        }
+        @media (max-width: 900px) {
+            .hint-pill {
+                display: none;
+            }
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="viewport-root">
+        <canvas id="glCanvas"></canvas>
+        <div id="loadingBanner" class="loading-banner">Loading 3D GNM Head v3.0 mesh&hellip;</div>
+
+        <div class="top-bar">
+            <div class="hud-card">
+                <div class="hud-title-row">
+                    <span class="live-dot"></span>
+                    <span class="hud-eyebrow">Google GNM Head v3.0 &middot; Multi-View 3D Fit</span>
+                </div>
+                <div class="hud-main-title">Sergio Orts Escolano</div>
+                <div class="hud-sub">17,049 3D vertices &middot; 33,788 triangles &middot; UDIM 1001 Edge-Flow PBR</div>
+            </div>
+
+            <div class="top-actions">
+                <a href="https://github.com/google/GNM" target="_blank" rel="noopener noreferrer" class="action-btn">
+                    GNM GitHub &#8599;
+                </a>
+                <button type="button" id="btnExportObj" class="action-btn">
+                    &#11015; Export .OBJ
+                </button>
+                <button type="button" id="btnFullscreen" class="action-btn primary">
+                    &#10530; Fullscreen
+                </button>
+            </div>
+        </div>
+
+        <div class="bottom-dock">
+            <div class="dock-row">
+                <span class="dock-label">Motion</span>
+                <button type="button" class="ctrl-btn is-active" data-anim="gnm_spin">GNM Spin (&plusmn;22&deg;)</button>
+                <button type="button" class="ctrl-btn" data-anim="turntable">360&deg; Orbit</button>
+                <button type="button" class="ctrl-btn" data-anim="none">Static</button>
+
+                <span class="dock-divider"></span>
+                <span class="dock-label">Surface</span>
+                <button type="button" class="ctrl-btn is-active" id="btnEdgeflow">Edge-Flow UV</button>
+                <button type="button" class="ctrl-btn" id="btnWireframe">3D Wireframe</button>
+                <button type="button" class="ctrl-btn" id="btnNormals">Surface Normals</button>
+            </div>
+
+            <div class="dock-row">
+                <span class="dock-label">Camera</span>
+                <button type="button" class="ctrl-btn" data-cam="frontal">Frontal 0&deg;</button>
+                <button type="button" class="ctrl-btn" data-cam="right26">Right 3/4 (+26&deg;)</button>
+                <button type="button" class="ctrl-btn" data-cam="left26">Left 3/4 (-26&deg;)</button>
+                <button type="button" class="ctrl-btn" data-cam="uptilt24">Up-Tilt (+24&deg;)</button>
+                <button type="button" class="ctrl-btn" data-cam="profileL">Profile L (-75&deg;)</button>
+                <button type="button" class="ctrl-btn" data-cam="profileR">Profile R (+75&deg;)</button>
+            </div>
+        </div>
+
+        <div class="hint-pill">
+            Left-Drag: Orbit &nbsp;&middot;&nbsp; Right/Shift-Drag: Pan &nbsp;&middot;&nbsp; Scroll: Zoom
+        </div>
+    </div>
+
+    <script>
+        (async function () {
+            const canvas = document.getElementById('glCanvas');
+            const loadingBanner = document.getElementById('loadingBanner');
+
+            const state = {
+                animMode: 'gnm_spin',
+                showEdgeflow: true,
+                showWireframe: false,
+                showNormals: false,
+                yawDeg: 0.0,
+                pitchDeg: 0.0,
+                distance: 0.86,
+                fovDeg: 20.0,
+                panX: 0.0,
+                panY: -0.006
+            };
+
+            function b64ToBytes(b64) {
+                const bin = atob(b64);
+                const len = bin.length;
+                const out = new Uint8Array(len);
+                for (let i = 0; i < len; i++) out[i] = bin.charCodeAt(i);
+                return out;
+            }
+
+            try {
+                const resp = await fetch('assets/sergio_gnm_head.json');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const payload = await resp.json();
+
+                const gl = canvas.getContext('webgl', { antialias: true, alpha: false, depth: true });
+                if (!gl) throw new Error('WebGL not supported');
+
+                const extAniso = (
+                    gl.getExtension('EXT_texture_filter_anisotropic') ||
+                    gl.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
+                    gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')
+                );
+
+                const num3D = payload.num3D;
+                const numUV = payload.numUV;
+                const numTris = payload.numTris;
+                const targetCenter = payload.targetCenter;
+
+                const curVerts3D = new Float32Array(b64ToBytes(payload.vCfg4F32).buffer);
+                const facesUV = new Uint16Array(b64ToBytes(payload.facesUVU16).buffer);
+                const mapUVTo3D = new Uint16Array(b64ToBytes(payload.mapUVTo3DU16).buffer);
+                const uvCoords = new Float32Array(b64ToBytes(payload.uvCoordsF32).buffer);
+                const uvIsSkin = b64ToBytes(payload.uvIsSkinU8);
+                const vc3DU8 = b64ToBytes(payload.vc3DU8);
+
+                const curNorms3D = new Float32Array(num3D * 3);
+                for (let t = 0; t < numTris; t++) {
+                    const i0 = mapUVTo3D[facesUV[t * 3]] * 3;
+                    const i1 = mapUVTo3D[facesUV[t * 3 + 1]] * 3;
+                    const i2 = mapUVTo3D[facesUV[t * 3 + 2]] * 3;
+                    const ax = curVerts3D[i1] - curVerts3D[i0];
+                    const ay = curVerts3D[i1 + 1] - curVerts3D[i0 + 1];
+                    const az = curVerts3D[i1 + 2] - curVerts3D[i0 + 2];
+                    const bx = curVerts3D[i2] - curVerts3D[i0];
+                    const by = curVerts3D[i2 + 1] - curVerts3D[i0 + 1];
+                    const bz = curVerts3D[i2 + 2] - curVerts3D[i0 + 2];
+                    const nx = ay * bz - az * by;
+                    const ny = az * bx - ax * bz;
+                    const nz = ax * by - ay * bx;
+                    curNorms3D[i0] += nx; curNorms3D[i0 + 1] += ny; curNorms3D[i0 + 2] += nz;
+                    curNorms3D[i1] += nx; curNorms3D[i1 + 1] += ny; curNorms3D[i1 + 2] += nz;
+                    curNorms3D[i2] += nx; curNorms3D[i2 + 1] += ny; curNorms3D[i2 + 2] += nz;
+                }
+                for (let i = 0; i < num3D; i++) {
+                    const idx = i * 3;
+                    const l = Math.hypot(curNorms3D[idx], curNorms3D[idx + 1], curNorms3D[idx + 2]) || 1e-8;
+                    curNorms3D[idx] /= l;
+                    curNorms3D[idx + 1] /= l;
+                    curNorms3D[idx + 2] /= l;
+                }
+
+                const uvPositions = new Float32Array(numUV * 3);
+                const uvNormals = new Float32Array(numUV * 3);
+                const uvColors = new Float32Array(numUV * 3);
+                const uvSkinFlag = new Float32Array(numUV);
+
+                for (let k = 0; k < numUV; k++) {
+                    const v3 = mapUVTo3D[k] * 3;
+                    const u3 = k * 3;
+                    uvPositions[u3] = curVerts3D[v3];
+                    uvPositions[u3 + 1] = curVerts3D[v3 + 1];
+                    uvPositions[u3 + 2] = curVerts3D[v3 + 2];
+                    uvNormals[u3] = curNorms3D[v3];
+                    uvNormals[u3 + 1] = curNorms3D[v3 + 1];
+                    uvNormals[u3 + 2] = curNorms3D[v3 + 2];
+                    uvColors[u3] = vc3DU8[v3] / 255.0;
+                    uvColors[u3 + 1] = vc3DU8[v3 + 1] / 255.0;
+                    uvColors[u3 + 2] = vc3DU8[v3 + 2] / 255.0;
+                    uvSkinFlag[k] = uvIsSkin[k];
+                }
+
+                const wireIndices = new Uint16Array(numTris * 6);
+                for (let i = 0; i < numTris; i++) {
+                    const i0 = facesUV[i * 3];
+                    const i1 = facesUV[i * 3 + 1];
+                    const i2 = facesUV[i * 3 + 2];
+                    const b = i * 6;
+                    wireIndices[b] = i0; wireIndices[b + 1] = i1;
+                    wireIndices[b + 2] = i1; wireIndices[b + 3] = i2;
+                    wireIndices[b + 4] = i2; wireIndices[b + 5] = i0;
+                }
+
+                const vsSource = `
+                    attribute vec3 aPosition;
+                    attribute vec3 aNormal;
+                    attribute vec2 aUV;
+                    attribute vec3 aColor;
+                    attribute float aIsSkin;
+
+                    uniform mat4 uView;
+                    uniform mat4 uProj;
+                    uniform float uDepthBias;
+
+                    varying vec3 vPosCam;
+                    varying vec3 vNormCam;
+                    varying vec3 vNormWorld;
+                    varying vec2 vUV;
+                    varying vec3 vColor;
+                    varying float vIsSkin;
+
+                    void main() {
+                        vec4 posCam = uView * vec4(aPosition, 1.0);
+                        posCam.z += uDepthBias;
+                        vPosCam = posCam.xyz;
+                        vNormCam = mat3(uView) * aNormal;
+                        vNormWorld = aNormal;
+                        vUV = aUV;
+                        vColor = aColor;
+                        vIsSkin = aIsSkin;
+                        gl_Position = uProj * posCam;
+                    }
+                `;
+
+                const fsSource = `
+                    precision highp float;
+
+                    varying vec3 vPosCam;
+                    varying vec3 vNormCam;
+                    varying vec3 vNormWorld;
+                    varying vec2 vUV;
+                    varying vec3 vColor;
+                    varying float vIsSkin;
+
+                    uniform sampler2D uEdgeflowTex;
+                    uniform float uShowEdgeflow;
+                    uniform int uShowNormals;
+                    uniform int uIsWirePass;
+
+                    const float PI = 3.141592653589793;
+                    const float MIN_ROUGHNESS = 0.04;
+
+                    void main() {
+                        if (uIsWirePass == 1) {
+                            gl_FragColor = vec4(0.05, 0.14, 0.24, 0.55);
+                            return;
+                        }
+
+                        vec3 n = normalize(vNormCam);
+                        if (!gl_FrontFacing) n = -n;
+
+                        if (uShowNormals == 1) {
+                            vec3 nw = normalize(vNormWorld) * 0.5 + 0.5;
+                            gl_FragColor = vec4(nw, 1.0);
+                            return;
+                        }
+
+                        float efRaw = texture2D(uEdgeflowTex, vUV).r;
+                        float efMod = mix(1.0, efRaw * 0.5 + 0.5, vIsSkin * uShowEdgeflow);
+
+                        vec3 baseColor = vec3(efMod);
+                        vec3 c_diff = baseColor * (1.0 - MIN_ROUGHNESS);
+                        vec3 f0 = vec3(MIN_ROUGHNESS);
+
+                        vec3 l = normalize(vec3(1.0, 1.0, 1.0));
+                        vec3 v = normalize(-vPosCam);
+                        vec3 h = normalize(l + v);
+
+                        float nl = clamp((dot(n, l) + 0.8) / 1.8, 0.0, 1.0);
+                        float nv = clamp(abs(dot(n, v)), 0.001, 1.0);
+                        float vh = clamp(dot(v, h), 0.0, 1.0);
+
+                        vec3 F = f0 + (1.0 - f0) * pow(clamp(1.0 - vh, 0.0, 1.0), 5.0);
+                        float k = 0.5;
+                        float g1 = nv / (nv * (1.0 - k) + k);
+                        float g2 = nl / (nl * (1.0 - k) + k);
+                        float G = g1 * g2;
+                        float D = 1.0 / PI;
+
+                        vec3 diffuseContrib = (1.0 - F) * c_diff / PI;
+                        vec3 specContrib = F * G * D / (4.0 * nl * nv + 0.001);
+
+                        vec3 radiance = vec3(3.34);
+                        vec3 litColor = nl * radiance * (diffuseContrib + specContrib) * vColor;
+
+                        gl_FragColor = vec4(clamp(litColor, 0.0, 1.0), 1.0);
+                    }
+                `;
+
+                function compileShader(type, src) {
+                    const sh = gl.createShader(type);
+                    gl.shaderSource(sh, src);
+                    gl.compileShader(sh);
+                    return sh;
+                }
+
+                const prog = gl.createProgram();
+                gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
+                gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
+                gl.linkProgram(prog);
+                gl.useProgram(prog);
+
+                const loc = {
+                    aPosition: gl.getAttribLocation(prog, 'aPosition'),
+                    aNormal: gl.getAttribLocation(prog, 'aNormal'),
+                    aUV: gl.getAttribLocation(prog, 'aUV'),
+                    aColor: gl.getAttribLocation(prog, 'aColor'),
+                    aIsSkin: gl.getAttribLocation(prog, 'aIsSkin'),
+                    uView: gl.getUniformLocation(prog, 'uView'),
+                    uProj: gl.getUniformLocation(prog, 'uProj'),
+                    uDepthBias: gl.getUniformLocation(prog, 'uDepthBias'),
+                    uEdgeflowTex: gl.getUniformLocation(prog, 'uEdgeflowTex'),
+                    uShowEdgeflow: gl.getUniformLocation(prog, 'uShowEdgeflow'),
+                    uShowNormals: gl.getUniformLocation(prog, 'uShowNormals'),
+                    uIsWirePass: gl.getUniformLocation(prog, 'uIsWirePass')
+                };
+
+                const bufPos = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
+                gl.bufferData(gl.ARRAY_BUFFER, uvPositions, gl.STATIC_DRAW);
+
+                const bufNorm = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
+                gl.bufferData(gl.ARRAY_BUFFER, uvNormals, gl.STATIC_DRAW);
+
+                const bufUV = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
+                gl.bufferData(gl.ARRAY_BUFFER, uvCoords, gl.STATIC_DRAW);
+
+                const bufColor = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bufColor);
+                gl.bufferData(gl.ARRAY_BUFFER, uvColors, gl.STATIC_DRAW);
+
+                const bufSkin = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, bufSkin);
+                gl.bufferData(gl.ARRAY_BUFFER, uvSkinFlag, gl.STATIC_DRAW);
+
+                const bufFaces = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufFaces);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, facesUV, gl.STATIC_DRAW);
+
+                const bufWire = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufWire);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, wireIndices, gl.STATIC_DRAW);
+
+                const edgeflowTex = gl.createTexture();
+                gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
+                gl.texImage2D(
+                    gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+                    new Uint8Array([255, 255, 255, 255])
+                );
+
+                const efImg = new Image();
+                efImg.onload = () => {
+                    gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, efImg);
+                    gl.generateMipmap(gl.TEXTURE_2D);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    if (extAniso) {
+                        const maxAniso = gl.getParameter(extAniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+                        gl.texParameterf(gl.TEXTURE_2D, extAniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(16, maxAniso));
+                    }
+                };
+                efImg.src = 'data:image/png;base64,' + payload.edgeflowPngB64;
+
+                function computeViewAndProj(aspect) {
+                    const yaw = (state.yawDeg * Math.PI) / 180.0;
+                    const pitch = (state.pitchDeg * Math.PI) / 180.0;
+                    const tx = targetCenter[0] + state.panX;
+                    const ty = targetCenter[1] + state.panY;
+                    const tz = targetCenter[2];
+
+                    const cx = tx + state.distance * Math.cos(pitch) * Math.sin(yaw);
+                    const cy = ty + state.distance * Math.sin(pitch);
+                    const cz = tz + state.distance * Math.cos(pitch) * Math.cos(yaw);
+
+                    let zx = cx - tx, zy = cy - ty, zz = cz - tz;
+                    const zl = Math.hypot(zx, zy, zz) || 1.0;
+                    zx /= zl; zy /= zl; zz /= zl;
+
+                    let xx = zz, xy = 0.0, xz = -zx;
+                    const xl = Math.hypot(xx, xy, xz) || 1.0;
+                    xx /= xl; xy /= xl; xz /= xl;
+
+                    const yx = zy * xz - zz * xy;
+                    const yy = zz * xx - zx * xz;
+                    const yz = zx * xy - zy * xx;
+
+                    const view = new Float32Array([
+                        xx, yx, zx, 0,
+                        xy, yy, zy, 0,
+                        xz, yz, zz, 0,
+                        -(xx * cx + xy * cy + xz * cz),
+                        -(yx * cx + yy * cy + yz * cz),
+                        -(zz * cz + zx * cx + zy * cy),
+                        1
+                    ]);
+
+                    const f = 1.0 / Math.tan(((state.fovDeg * Math.PI) / 180.0) * 0.5);
+                    const near = 0.1, far = 4.0, nf = 1.0 / (near - far);
+                    const proj = new Float32Array([
+                        f / aspect, 0, 0, 0,
+                        0, f, 0, 0,
+                        0, 0, (far + near) * nf, -1,
+                        0, 0, 2 * far * near * nf, 0
+                    ]);
+
+                    return { view, proj };
+                }
+
+                const startTime = performance.now();
+                function renderFrame(now) {
+                    const dt = (now - startTime) * 0.001;
+                    if (state.animMode === 'gnm_spin') {
+                        state.yawDeg = Math.sin(dt * 1.6) * 22.0;
+                        state.pitchDeg = Math.cos(dt * 1.6) * 5.0;
+                    } else if (state.animMode === 'turntable') {
+                        state.yawDeg = ((dt * 28.0 + 180.0) % 360.0) - 180.0;
+                    }
+
+                    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                    const cssW = canvas.clientWidth || window.innerWidth;
+                    const cssH = canvas.clientHeight || window.innerHeight;
+                    const w = Math.floor(cssW * dpr);
+                    const h = Math.floor(cssH * dpr);
+
+                    if (canvas.width !== w || canvas.height !== h) {
+                        canvas.width = w;
+                        canvas.height = h;
+                    }
+
+                    gl.viewport(0, 0, w, h);
+                    gl.clearColor(0.043, 0.063, 0.090, 1.0);
+                    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                    gl.enable(gl.DEPTH_TEST);
+
+                    const { view, proj } = computeViewAndProj(w / h);
+
+                    gl.useProgram(prog);
+                    gl.uniformMatrix4fv(loc.uView, false, view);
+                    gl.uniformMatrix4fv(loc.uProj, false, proj);
+                    gl.uniform1f(loc.uDepthBias, 0.0);
+                    gl.uniform1f(loc.uShowEdgeflow, state.showEdgeflow ? 1.0 : 0.0);
+                    gl.uniform1i(loc.uShowNormals, state.showNormals ? 1 : 0);
+                    gl.uniform1i(loc.uIsWirePass, 0);
+
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D, edgeflowTex);
+                    gl.uniform1i(loc.uEdgeflowTex, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
+                    gl.enableVertexAttribArray(loc.aPosition);
+                    gl.vertexAttribPointer(loc.aPosition, 3, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bufNorm);
+                    gl.enableVertexAttribArray(loc.aNormal);
+                    gl.vertexAttribPointer(loc.aNormal, 3, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bufUV);
+                    gl.enableVertexAttribArray(loc.aUV);
+                    gl.vertexAttribPointer(loc.aUV, 2, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bufColor);
+                    gl.enableVertexAttribArray(loc.aColor);
+                    gl.vertexAttribPointer(loc.aColor, 3, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ARRAY_BUFFER, bufSkin);
+                    gl.enableVertexAttribArray(loc.aIsSkin);
+                    gl.vertexAttribPointer(loc.aIsSkin, 1, gl.FLOAT, false, 0, 0);
+
+                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufFaces);
+                    gl.drawElements(gl.TRIANGLES, numTris * 3, gl.UNSIGNED_SHORT, 0);
+
+                    if (state.showWireframe) {
+                        gl.enable(gl.BLEND);
+                        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                        gl.uniform1f(loc.uDepthBias, 0.0008);
+                        gl.uniform1i(loc.uIsWirePass, 1);
+                        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufWire);
+                        gl.drawElements(gl.LINES, numTris * 6, gl.UNSIGNED_SHORT, 0);
+                        gl.disable(gl.BLEND);
+                    }
+
+                    requestAnimationFrame(renderFrame);
+                }
+
+                loadingBanner.style.display = 'none';
+                requestAnimationFrame(renderFrame);
+
+                // Controls & Interactions
+                function syncUI() {
+                    document.querySelectorAll('[data-anim]').forEach(btn => {
+                        btn.classList.toggle('is-active', btn.dataset.anim === state.animMode);
+                    });
+                    document.getElementById('btnEdgeflow').classList.toggle('is-active', state.showEdgeflow);
+                    document.getElementById('btnWireframe').classList.toggle('is-active', state.showWireframe);
+                    document.getElementById('btnNormals').classList.toggle('is-active', state.showNormals);
+                }
+
+                document.querySelectorAll('[data-anim]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        state.animMode = btn.dataset.anim;
+                        syncUI();
+                    });
+                });
+
+                document.getElementById('btnEdgeflow').addEventListener('click', () => {
+                    state.showEdgeflow = !state.showEdgeflow;
+                    syncUI();
+                });
+
+                document.getElementById('btnWireframe').addEventListener('click', () => {
+                    state.showWireframe = !state.showWireframe;
+                    syncUI();
+                });
+
+                document.getElementById('btnNormals').addEventListener('click', () => {
+                    state.showNormals = !state.showNormals;
+                    syncUI();
+                });
+
+                const CAM_PRESETS = {
+                    frontal:  { yaw: 0.0,   pitch: 0.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
+                    right26:  { yaw: 26.0,  pitch: 5.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
+                    left26:   { yaw: -26.0, pitch: 6.0,  dist: 0.86, panX: 0.0, panY: -0.006 },
+                    uptilt24: { yaw: -3.5,  pitch: 24.0, dist: 0.86, panX: 0.0, panY: -0.006 },
+                    profileL: { yaw: -75.0, pitch: 0.0,  dist: 0.90, panX: 0.0, panY: -0.006 },
+                    profileR: { yaw: 75.0,  pitch: 0.0,  dist: 0.90, panX: 0.0, panY: -0.006 }
+                };
+
+                document.querySelectorAll('[data-cam]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const p = CAM_PRESETS[btn.dataset.cam];
+                        if (!p) return;
+                        state.animMode = 'none';
+                        state.yawDeg = p.yaw;
+                        state.pitchDeg = p.pitch;
+                        state.distance = p.dist;
+                        state.panX = p.panX;
+                        state.panY = p.panY;
+                        syncUI();
+                    });
+                });
+
+                // Mouse/Touch Drag & Wheel
+                let isDragging = false;
+                let dragMode = 'orbit';
+                let lastX = 0, lastY = 0;
+
+                canvas.addEventListener('contextmenu', e => e.preventDefault());
+                canvas.addEventListener('pointerdown', e => {
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    dragMode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+                    if (dragMode === 'orbit' && state.animMode !== 'none') {
+                        state.animMode = 'none';
+                        syncUI();
+                    }
+                    canvas.setPointerCapture(e.pointerId);
+                });
+
+                canvas.addEventListener('pointermove', e => {
+                    if (!isDragging) return;
+                    const dx = e.clientX - lastX;
+                    const dy = e.clientY - lastY;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    if (dragMode === 'orbit') {
+                        state.yawDeg -= dx * 0.42;
+                        state.pitchDeg = Math.max(-75, Math.min(75, state.pitchDeg + dy * 0.42));
+                    } else {
+                        state.panX -= dx * 0.00045 * state.distance;
+                        state.panY += dy * 0.00045 * state.distance;
+                    }
+                });
+
+                canvas.addEventListener('pointerup', e => {
+                    isDragging = false;
+                    try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+                });
+
+                canvas.addEventListener('wheel', e => {
+                    e.preventDefault();
+                    const factor = Math.exp(e.deltaY * 0.001);
+                    state.distance = Math.max(0.45, Math.min(2.2, state.distance * factor));
+                }, { passive: false });
+
+                // Export .OBJ
+                document.getElementById('btnExportObj').addEventListener('click', () => {
+                    const lines = ['# Google GNM Head v3.0 — Sergio Orts Escolano (Config 4 Fit)'];
+                    for (let i = 0; i < num3D; i++) {
+                        const idx = i * 3;
+                        lines.push(`v ${curVerts3D[idx].toFixed(6)} ${curVerts3D[idx+1].toFixed(6)} ${curVerts3D[idx+2].toFixed(6)}`);
+                    }
+                    for (let t = 0; t < numTris; t++) {
+                        const a = mapUVTo3D[facesUV[t * 3]] + 1;
+                        const b = mapUVTo3D[facesUV[t * 3 + 1]] + 1;
+                        const c = mapUVTo3D[facesUV[t * 3 + 2]] + 1;
+                        lines.push(`f ${a} ${b} ${c}`);
+                    }
+                    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'sergio_gnm_head_v3.obj';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+                // Fullscreen toggle
+                const fsBtn = document.getElementById('btnFullscreen');
+                fsBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen().catch(() => {});
+                    }
+                });
+                document.addEventListener('fullscreenchange', () => {
+                    fsBtn.innerHTML = document.fullscreenElement ? '&#10005; Exit Fullscreen' : '&#10530; Fullscreen';
+                });
+
+            } catch (err) {
+                console.error(err);
+                loadingBanner.textContent = 'Failed to load 3D GNM viewer.';
+            }
+        })();
+    </script>
+</body>
+</html>

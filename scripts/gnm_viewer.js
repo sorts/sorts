@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const savedCompactPref = sessionStorage.getItem('soe_gnm_viewer_compact');
     let isCompact = savedCompactPref !== null ? savedCompactPref === 'true' : false;
+    let isFullSize = false;
 
     const state = {
         animMode: 'gnm_spin',
@@ -37,7 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="gnm-viewer-live-dot"></span>
                         <span class="gnm-viewer-title-text">3D GNM Fit</span>
                     </span>
-                    <button type="button" id="gnm-viewer-toggle-btn" class="gnm-viewer-toggle-btn"></button>
+                    <div class="gnm-header-actions">
+                        <button type="button" id="gnm-viewer-fullsize-btn" class="gnm-viewer-action-btn" title="Toggle full-size 3D viewer">&#10530; Full</button>
+                        <button type="button" id="gnm-viewer-newwin-btn" class="gnm-viewer-action-btn" title="Open standalone 3D GNM viewer in a separate full-size window">Viewer &#8599;</button>
+                        <button type="button" id="gnm-viewer-toggle-btn" class="gnm-viewer-toggle-btn"></button>
+                    </div>
                 </div>
                 <div class="gnm-viewer-body" id="gnm-viewer-body">
                     <div class="gnm-canvas-wrap">
@@ -55,9 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             const toggleBtn = document.getElementById('gnm-viewer-toggle-btn');
+            const fullsizeBtn = document.getElementById('gnm-viewer-fullsize-btn');
+            const newwinBtn = document.getElementById('gnm-viewer-newwin-btn');
             const titleClick = document.getElementById('gnm-viewer-title-click');
 
             const toggleCollapse = () => {
+                if (isFullSize) {
+                    isFullSize = false;
+                }
                 isCompact = !isCompact;
                 sessionStorage.setItem('soe_gnm_viewer_compact', String(isCompact));
                 syncUIState();
@@ -66,6 +76,32 @@ document.addEventListener('DOMContentLoaded', () => {
             if (toggleBtn) {
                 toggleBtn.addEventListener('click', toggleCollapse);
             }
+            if (fullsizeBtn) {
+                fullsizeBtn.addEventListener('click', () => {
+                    isFullSize = !isFullSize;
+                    if (isFullSize) {
+                        isCompact = false;
+                    }
+                    syncUIState();
+                });
+            }
+            if (newwinBtn) {
+                newwinBtn.addEventListener('click', () => {
+                    const availW = (window.screen && window.screen.availWidth) ? window.screen.availWidth : 1440;
+                    const availH = (window.screen && window.screen.availHeight) ? window.screen.availHeight : 900;
+                    const winFeatures = `width=${availW},height=${availH},left=0,top=0,resizable=yes,scrollbars=no`;
+                    const opened = window.open('gnm_viewer.html', 'GNM3DViewerWindow', winFeatures);
+                    if (!opened) {
+                        window.open('gnm_viewer.html', '_blank', 'noopener');
+                    }
+                });
+            }
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isFullSize) {
+                    isFullSize = false;
+                    syncUIState();
+                }
+            });
             if (titleClick) {
                 titleClick.addEventListener('click', () => {
                     if (isCompact) {
@@ -123,11 +159,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function syncUIState() {
         const isInlineMode = typeof window !== 'undefined' && window.innerWidth < 1400;
-        containerEl.classList.toggle('is-inline-mode', isInlineMode);
-        containerEl.classList.toggle('is-compact', isCompact);
+        containerEl.classList.toggle('is-inline-mode', isInlineMode && !isFullSize);
+        containerEl.classList.toggle('is-compact', isCompact && !isFullSize);
+        containerEl.classList.toggle('is-fullsize', isFullSize);
 
         const toggleBtn = document.getElementById('gnm-viewer-toggle-btn');
+        const fullsizeBtn = document.getElementById('gnm-viewer-fullsize-btn');
+        if (fullsizeBtn) {
+            fullsizeBtn.innerHTML = isFullSize ? '&#10005; Exit Full' : '&#10530; Full';
+            fullsizeBtn.classList.toggle('is-active', isFullSize);
+        }
         if (toggleBtn) {
+            toggleBtn.style.display = isFullSize ? 'none' : '';
             if (isInlineMode) {
                 toggleBtn.innerHTML = isCompact ? 'Expand 3D &#9662;' : 'Collapse &#9652;';
                 toggleBtn.title = isCompact ? 'Expand 3D GNM viewer' : 'Collapse 3D GNM viewer';

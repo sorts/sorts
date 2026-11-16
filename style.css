@@ -1750,8 +1750,80 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.4rem;
     margin-bottom: 0.75rem;
+}
+
+.gnm-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+}
+
+.gnm-viewer-card.is-compact .gnm-header-actions {
+    width: 100%;
+    flex-direction: column;
+}
+
+.gnm-viewer-card.is-compact .gnm-viewer-action-btn {
+    display: none;
+}
+
+.gnm-viewer-action-btn {
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    color: var(--primary-color);
+    font-family: var(--font-family);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.26rem 0.5rem;
+    border-radius: 0.42rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.gnm-viewer-action-btn:hover,
+.gnm-viewer-action-btn.is-active {
+    background: #329ced;
+    border-color: #329ced;
+    color: #FFFFFF;
+}
+
+/* Full-Size Expanded Overlay Window Mode */
+.gnm-viewer-card.is-fullsize {
+    position: fixed !important;
+    top: 1rem !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    bottom: 1rem !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 !important;
+    z-index: 2500 !important;
+    display: flex;
+    flex-direction: column;
+    padding: 1.15rem 1.35rem !important;
+    background: rgba(11, 17, 32, 0.96) !important;
+    border: 1px solid #329ced !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65) !important;
+    transition: none !important;
+}
+
+.gnm-viewer-card.is-fullsize .gnm-viewer-title {
+    color: #f8fafc;
+    font-size: 0.95rem;
+}
+
+.gnm-viewer-card.is-fullsize .gnm-viewer-body {
+    flex: 1;
+    min-height: 0;
+}
+
+.gnm-viewer-card.is-fullsize .gnm-canvas-wrap {
+    flex: 1;
+    height: 100% !important;
 }
 
 .gnm-viewer-card.is-compact .gnm-viewer-header {
@@ -2218,10 +2290,11 @@ html[data-retro="8bit"] .news-spine-live-dot {
 }
 
 html[data-retro="8bit"] .gnm-viewer-toggle-btn,
+html[data-retro="8bit"] .gnm-viewer-action-btn,
 html[data-retro="8bit"] .news-spine-toggle-btn,
 html[data-retro="8bit"] .gnm-ctrl-chip {
     font-family: 'Press Start 2P', monospace;
-    font-size: 0.56rem;
+    font-size: 0.52rem;
     border-radius: 0 !important;
     border: 2px solid #FFFFFF;
     background: #183C8C;
